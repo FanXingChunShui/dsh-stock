@@ -113,6 +113,38 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      # 发布前先确认 token 真的传进来了。
+      # 只在「是否存在」层面打日志，绝不打印 token 内容本身。
+      - name: Check npm token presence
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::secrets.NPM_TOKEN 为空——仓库 secret 未配置或名称不匹配（必须一字不差叫 NPM_TOKEN）"
+            exit 1
+          fi
+          echo "✓ NPM_TOKEN 已注入（长度 ${#NODE_AUTH_TOKEN}，前缀 ${NODE_AUTH_TOKEN:0:4}…）"
+          echo "registry: $(npm config get registry)"
+          echo "node: $(node --version) / npm: $(npm --version)"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # 用 token 直接问 npm「我是谁」，这是最直接的凭证有效性验证：
+      #   - 401/403 → token 无效、过期，或没有该包的发布权限
+      #   - 200     → token 有效
+      - name: Verify npm credentials
+        run: |
+          set +e
+          RESP=$(npm whoami 2>&1)
+          CODE=$?
+          set -e
+          if [ $CODE -ne 0 ]; then
+            echo "::error::npm whoami 失败（退出码 $CODE）：$RESP"
+            echo "常见原因：token 无效/过期、token 是只读类型、或账号未验证邮箱"
+            exit 1
+          fi
+          echo "✓ npm 身份：$RESP"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       # provenance 会附带 SLSA 来源证明，但要求仓库是**公开**的。
       # 私有仓库 + --provenance 会直接报错，所以用变量控制：
       # 公开仓库保持开启（默认），私有仓库把仓库变量 ENABLE_PROVENANCE 设为 false。
@@ -120,13 +152,24 @@ jobs:
         run: |
           if [ "${{ vars.ENABLE_PROVENANCE }}" = "false" ]; then
             echo "provenance 已关闭，普通发布"
-            npm publish --access public
+            npm publish --access public 2>&1 | tee publish.log
           else
             echo "provenance 开启"
-            npm publish --access public --provenance
+            npm publish --access public --provenance 2>&1 | tee publish.log
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # 发布失败时把 npm 的完整错误贴到 Job Summary，
+      # 这样不用下载日志、也不用 admin 权限就能看到原因。
+      - name: Show publish failure details
+        if: failure()
+        run: |
+          echo "### npm publish 失败" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          if [ -f publish.log ]; then tail -40 publish.log >> $GITHUB_STEP_SUMMARY; fi
+          echo "```" >> $GITHUB_STEP_SUMMARY
 
       - name: Publish summary
         run: |
