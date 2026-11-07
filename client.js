@@ -143,6 +143,25 @@ window.__ModuleLoader__.load({
       announceNone: 'No announcements',
       announceOpen: 'Open',
       analyzeOneClick: 'Analyze',
+      klineTitle: 'Daily candles',
+      klineLoading: 'Loading candles…',
+      klineFailed: 'Could not load candles: {error}',
+      klineEmpty: 'No candle data',
+      klineDays: '{count} sessions',
+      klineRange60: '60D',
+      klineRange120: '120D',
+      klineRange250: '250D',
+      klineOpen: 'O',
+      klineHigh: 'H',
+      klineLow: 'L',
+      klineClose: 'C',
+      klineVolume: 'V',
+      interpretOneClick: 'Interpret',
+      interpretRunning: 'Interpreting…',
+      interpretTitle: 'Reading',
+      interpretSignals: 'Signals',
+      interpretCautions: 'Watch out',
+      interpretFailed: 'Interpretation failed: {error}',
       analyzeRunning: 'Analyzing…',
       analyzeDone: 'Analysis ready',
       analyzeFailed: 'Analysis failed: {error}',
@@ -336,6 +355,25 @@ window.__ModuleLoader__.load({
       announceNone: '暂无公告',
       announceOpen: '查看',
       analyzeOneClick: '一键分析',
+      klineTitle: '日K线',
+      klineLoading: '正在加载 K 线…',
+      klineFailed: '加载 K 线失败：{error}',
+      klineEmpty: '暂无 K 线数据',
+      klineDays: '{count} 个交易日',
+      klineRange60: '近 60 日',
+      klineRange120: '近 120 日',
+      klineRange250: '近 250 日',
+      klineOpen: '开',
+      klineHigh: '高',
+      klineLow: '低',
+      klineClose: '收',
+      klineVolume: '量',
+      interpretOneClick: '一键解读',
+      interpretRunning: '解读中…',
+      interpretTitle: '走势解读',
+      interpretSignals: '技术信号',
+      interpretCautions: '需要留意',
+      interpretFailed: '解读失败：{error}',
       analyzeRunning: '分析中…',
       analyzeDone: '分析完成',
       analyzeFailed: '分析失败：{error}',
@@ -681,6 +719,23 @@ window.__ModuleLoader__.load({
       'a.astock-announce-title:hover{color:var(--astock-accent);text-decoration:underline}',
       '.astock-constituents{display:flex;flex-direction:column;border:.5px solid var(--astock-border);',
       '  border-radius:var(--astock-radius);overflow:hidden;max-height:420px;overflow-y:auto}',
+      '.astock-kline-wrap{display:flex;flex-direction:column;gap:4px}',
+      '.astock-kline-svg{width:100%;height:auto;display:block;overflow:visible}',
+      '.astock-kline-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;line-height:16px;',
+      '  color:var(--astock-text-3)}',
+      '.astock-kline-legend i{display:inline-block;width:10px;height:2px;vertical-align:middle;',
+      '  margin-right:4px;border-radius:1px}',
+      '.astock-kline-tip{font-size:11.5px;line-height:17px;color:var(--astock-text-2);',
+      '  font-variant-numeric:tabular-nums;min-height:17px}',
+      '.astock-reading{display:flex;flex-direction:column;gap:7px}',
+      '.astock-reading-head{font-size:13px;line-height:20px;font-weight:600;color:var(--astock-text)}',
+      '.astock-reading-p{font-size:12.5px;line-height:20px;color:var(--astock-text-2);margin:0}',
+      '.astock-reading-group{display:flex;flex-direction:column;gap:3px}',
+      '.astock-reading-label{font-size:11px;line-height:16px;color:var(--astock-text-3);font-weight:600}',
+      '.astock-reading-list{margin:0;padding:0 0 0 14px;list-style:none;display:flex;flex-direction:column;gap:2px}',
+      '.astock-reading-list li{font-size:12px;line-height:18px;color:var(--astock-text-2)}',
+      '.astock-reading-list li::before{content:"· ";color:var(--astock-text-3)}',
+      '.astock-reading-cautions li::before{content:"! ";color:var(--astock-warn, #b8860b)}',
       '.astock-list-search{display:flex}',
       '.astock-list-search-input{flex:1 1 auto;font:inherit;font-size:12px;line-height:18px;padding:5px 10px;',
       '  border-radius:var(--astock-radius-sm);border:.5px solid var(--astock-border-strong);',
@@ -1673,6 +1728,252 @@ window.__ModuleLoader__.load({
         rows);
     }
 
+    /**
+     * 日 K 线蜡烛图（纯 SVG，不引入任何图表库）。
+     *
+     * 为什么手写 SVG 而不是用图表库：
+     *   - 插件要求零运行时依赖，图表库动辄几十 KB
+     *   - 只需要蜡烛 + 均线 + 成交量，SVG 足够
+     *   - 直接读主题 CSS 变量，深浅色自动适配
+     *
+     * 坐标系：viewBox 固定 720×280，靠 CSS 宽度自适应缩放。
+     */
+    function KLineChart(props) {
+      var t = props.t;
+      var data = props.data;
+      var state = props.state;
+      var hoverState = React.useState(null);
+      var hover = hoverState[0];
+      var setHover = hoverState[1];
+
+      if (state.status === 'error') {
+        return h('section', { className: 'astock-card' },
+          h('h3', { className: 'astock-card-title' }, t('klineTitle')),
+          h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+            t('klineFailed', { error: String(state.error || '') })));
+      }
+      if (state.status === 'loading' || data === null || data === undefined) {
+        return h('section', { className: 'astock-card' },
+          h('h3', { className: 'astock-card-title' }, t('klineTitle')),
+          h('p', { className: 'astock-card-note' }, t('klineLoading')));
+      }
+      var bars = Array.isArray(data.bars) ? data.bars : [];
+      if (bars.length === 0) {
+        return h('section', { className: 'astock-card' },
+          h('h3', { className: 'astock-card-title' }, t('klineTitle')),
+          h('p', { className: 'astock-card-note' }, t('klineEmpty')));
+      }
+
+      /* ── 布局常量 ── */
+      var W = 720, H = 280;
+      var PAD_L = 6, PAD_R = 48, PAD_T = 10;
+      var PRICE_H = 196;          // 价格区高度
+      var GAP = 12;               // 价格区与量能区间隔
+      var VOL_H = H - PAD_T - PRICE_H - GAP - 16;
+      var plotW = W - PAD_L - PAD_R;
+      var n = bars.length;
+      var step = plotW / n;
+      var bodyW = Math.max(1.2, Math.min(9, step * 0.62));
+
+      /* ── 价格范围（含均线，避免均线出框）── */
+      var lo = Infinity, hi = -Infinity;
+      for (var i = 0; i < n; i += 1) {
+        if (bars[i].low < lo) lo = bars[i].low;
+        if (bars[i].high > hi) hi = bars[i].high;
+      }
+      var maSeries = data.ma || {};
+      for (var p2 = 0; p2 < [5, 10, 20, 60].length; p2 += 1) {
+        var arr = maSeries[[5, 10, 20, 60][p2]];
+        if (!Array.isArray(arr)) continue;
+        for (var j = 0; j < arr.length; j += 1) {
+          var v = arr[j];
+          if (v === null || v === undefined) continue;
+          if (v < lo) lo = v;
+          if (v > hi) hi = v;
+        }
+      }
+      if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) { hi = lo + 1; }
+      var pad = (hi - lo) * 0.06;
+      lo -= pad; hi += pad;
+
+      function yOf(price) { return PAD_T + ((hi - price) / (hi - lo)) * PRICE_H; }
+      function xOf(index) { return PAD_L + index * step + step / 2; }
+
+      /* ── 量能范围 ── */
+      var maxVol = 0;
+      for (var k = 0; k < n; k += 1) { if (bars[k].volume > maxVol) maxVol = bars[k].volume; }
+      if (maxVol <= 0) maxVol = 1;
+      var volTop = PAD_T + PRICE_H + GAP;
+      function volH(v) { return (v / maxVol) * VOL_H; }
+
+      /* ── 蜡烛 ── */
+      var candles = [];
+      for (var c = 0; c < n; c += 1) {
+        var b = bars[c];
+        var x = xOf(c);
+        var up = b.close >= b.open;
+        // A 股习惯：涨红跌绿
+        var color = up ? 'var(--astock-up)' : 'var(--astock-down)';
+        var yHigh = yOf(b.high);
+        var yLow = yOf(b.low);
+        var yOpen = yOf(b.open);
+        var yClose = yOf(b.close);
+        var bodyY = Math.min(yOpen, yClose);
+        var bodyH = Math.max(1, Math.abs(yClose - yOpen));
+        candles.push(h('g', { key: 'c' + c },
+          h('line', { x1: x, y1: yHigh, x2: x, y2: yLow, stroke: color, strokeWidth: 1 }),
+          h('rect', {
+            x: x - bodyW / 2, y: bodyY, width: bodyW, height: bodyH,
+            fill: up ? 'transparent' : color,
+            stroke: color, strokeWidth: 1,
+          }),
+          // 透明热区，用于 hover 提示
+          h('rect', {
+            x: x - step / 2, y: PAD_T, width: step, height: H - PAD_T,
+            fill: 'transparent',
+            onMouseEnter: function (ev) { setHover(c); },
+            onMouseLeave: function () { setHover(null); },
+          })));
+      }
+
+      /* ── 均线 ── */
+      var maColors = { 5: 'var(--astock-accent)', 10: 'var(--astock-warn, #b8860b)', 20: 'var(--astock-up)', 60: 'var(--astock-text-3)' };
+      var maPaths = [];
+      [5, 10, 20, 60].forEach(function (period) {
+        var arr = maSeries[period];
+        if (!Array.isArray(arr)) return;
+        var d = '';
+        var started = false;
+        for (var i2 = 0; i2 < arr.length; i2 += 1) {
+          var val = arr[i2];
+          if (val === null || val === undefined) { started = false; continue; }
+          d += (started ? ' L ' : ' M ') + xOf(i2).toFixed(1) + ' ' + yOf(val).toFixed(1);
+          started = true;
+        }
+        if (d.length > 0) {
+          maPaths.push(h('path', { key: 'ma' + period, d: d, fill: 'none', stroke: maColors[period],
+            strokeWidth: period === 5 ? 1.4 : 1.1, strokeLinejoin: 'round', opacity: 0.9 }));
+        }
+      });
+
+      /* ── 量能柱 ── */
+      var volBars = [];
+      for (var v2 = 0; v2 < n; v2 += 1) {
+        var bb = bars[v2];
+        var vh = volH(bb.volume);
+        var up2 = bb.close >= bb.open;
+        volBars.push(h('rect', {
+          key: 'v' + v2,
+          x: xOf(v2) - bodyW / 2, y: volTop + (VOL_H - vh), width: bodyW, height: Math.max(0.5, vh),
+          fill: up2 ? 'var(--astock-up)' : 'var(--astock-down)',
+          opacity: 0.55,
+        }));
+      }
+
+      /* ── 右侧价格刻度 ── */
+      var ticks = [];
+      for (var tk = 0; tk <= 4; tk += 1) {
+        var price = lo + ((hi - lo) * tk) / 4;
+        var yt = yOf(price);
+        ticks.push(h('g', { key: 't' + tk },
+          h('line', { x1: PAD_L, y1: yt, x2: W - PAD_R, y2: yt,
+            stroke: 'var(--astock-border)', strokeWidth: 0.5, strokeDasharray: '2 3' }),
+          h('text', { x: W - PAD_R + 4, y: yt + 3, fontSize: 9.5,
+            fill: 'var(--astock-text-3)', fontVariantNumeric: 'tabular-nums' }, price.toFixed(2))));
+      }
+
+      /* ── 底部日期 ── */
+      var dateLabels = [];
+      var labelCount = Math.min(5, n);
+      for (var dl = 0; dl < labelCount; dl += 1) {
+        var idx = Math.round((dl / (labelCount - 1 || 1)) * (n - 1));
+        dateLabels.push(h('text', {
+          key: 'd' + dl, x: xOf(idx), y: H - 2, fontSize: 9.5,
+          fill: 'var(--astock-text-3)', textAnchor: dl === 0 ? 'start' : dl === labelCount - 1 ? 'end' : 'middle',
+        }, String(bars[idx].date).slice(5)));
+      }
+
+      /* ── hover 详情 ── */
+      var hoverBar = hover !== null && hover !== undefined ? bars[hover] : bars[n - 1];
+      var tip = hoverBar
+        ? `${hoverBar.date}　${t('klineOpen')} ${fmtFixed(hoverBar.open, 2)}　`
+          + `${t('klineHigh')} ${fmtFixed(hoverBar.high, 2)}　`
+          + `${t('klineLow')} ${fmtFixed(hoverBar.low, 2)}　`
+          + `${t('klineClose')} ${fmtFixed(hoverBar.close, 2)}　`
+          + `${t('klineVolume')} ${fmtAmount(hoverBar.volume)}`
+        : '';
+
+      return h('section', { className: 'astock-card', 'aria-label': t('klineTitle') },
+        h('div', { className: 'astock-card-head' },
+          h('div', null,
+            h('h3', { className: 'astock-card-title' }, t('klineTitle')),
+            h('p', { className: 'astock-card-note' }, t('klineDays', { count: n }))),
+          h('div', { className: 'astock-seg' }, [
+            { days: 60, label: t('klineRange60') },
+            { days: 120, label: t('klineRange120') },
+            { days: 250, label: t('klineRange250') },
+          ].map(function (opt) {
+            return h('button', {
+              key: 'r' + opt.days,
+              type: 'button',
+              'data-active': n <= opt.days + 20 ? 'true' : 'false',
+              onClick: function () { props.onRange(opt.days); },
+            }, opt.label);
+          }))),
+        h('div', { className: 'astock-kline-wrap' },
+          h('p', { className: 'astock-kline-tip' }, tip),
+          h('svg', {
+            className: 'astock-kline-svg',
+            viewBox: '0 0 ' + W + ' ' + H,
+            preserveAspectRatio: 'xMidYMid meet',
+            role: 'img',
+            'aria-label': t('klineTitle'),
+          },
+            h('g', null, ticks),
+            h('g', null, candles),
+            h('g', null, maPaths),
+            h('g', null, volBars),
+            h('g', null, dateLabels)),
+          h('div', { className: 'astock-kline-legend' },
+            h('span', null, h('i', { style: { background: 'var(--astock-up)' } }), '涨'),
+            h('span', null, h('i', { style: { background: 'var(--astock-down)' } }), '跌'),
+            h('span', null, h('i', { style: { background: maColors[5] } }), 'MA5'),
+            h('span', null, h('i', { style: { background: maColors[10] } }), 'MA10'),
+            h('span', null, h('i', { style: { background: maColors[20] } }), 'MA20'),
+            h('span', null, h('i', { style: { background: maColors[60] } }), 'MA60'))));
+    }
+
+    /** 走势解读卡片（一键解读的结果）。 */
+    function ReadingCard(props) {
+      var t = props.t;
+      var reading = props.reading;
+      if (reading === null || reading === undefined) return null;
+      var paragraphs = Array.isArray(reading.paragraphs) ? reading.paragraphs : [];
+      var signals = Array.isArray(reading.signals) ? reading.signals : [];
+      var cautions = Array.isArray(reading.cautions) ? reading.cautions : [];
+      return h('section', { className: 'astock-card', 'aria-label': t('interpretTitle') },
+        h('h3', { className: 'astock-card-title' }, t('interpretTitle')),
+        h('div', { className: 'astock-reading' },
+          reading.headline ? h('p', { className: 'astock-reading-head' }, String(reading.headline)) : null,
+          paragraphs.map(function (p, i) {
+            return h('p', { className: 'astock-reading-p', key: 'p' + i }, String(p));
+          }),
+          signals.length > 0
+            ? h('div', { className: 'astock-reading-group' },
+              h('span', { className: 'astock-reading-label' }, t('interpretSignals')),
+              h('ul', { className: 'astock-reading-list' }, signals.map(function (s, i) {
+                return h('li', { key: 's' + i }, String(s));
+              })))
+            : null,
+          cautions.length > 0
+            ? h('div', { className: 'astock-reading-group' },
+              h('span', { className: 'astock-reading-label' }, t('interpretCautions')),
+              h('ul', { className: 'astock-reading-list astock-reading-cautions' }, cautions.map(function (c, i) {
+                return h('li', { key: 'c' + i }, String(c));
+              })))
+            : null));
+    }
+
     /** 最新公告列表。 */
     function AnnouncementsCard(props) {
       var t = props.t;
@@ -2188,6 +2489,18 @@ window.__ModuleLoader__.load({
 
       var detailToken = React.useRef(0);
 
+      /* K 线与走势解读 */
+      var klineState = React.useState({ status: 'idle', data: null, error: null, code: '' });
+      var kline = klineState[0];
+      var setKline = klineState[1];
+      var klineToken = React.useRef(0);
+      var klineDays = React.useRef(120);
+
+      var readingState = React.useState({ status: 'idle', reading: null, error: null });
+      var reading = readingState[0];
+      var setReading = readingState[1];
+      var readingToken = React.useRef(0);
+
       var toastState = React.useState(null);
       var toast = toastState[0];
       var setToast = toastState[1];
@@ -2391,6 +2704,40 @@ window.__ModuleLoader__.load({
         });
       }, [call, t]);
 
+      /* --- K 线 --- */
+      var loadKline = React.useCallback(function (code, days) {
+        if (typeof code !== 'string' || code.length === 0) return Promise.resolve();
+        var want = Number(days) || klineDays.current || 120;
+        klineDays.current = want;
+        var token = ++klineToken.current;
+        setKline(function (current) {
+          return { status: current.code === code && current.data !== null ? current.status : 'loading',
+            data: current.code === code ? current.data : null, error: null, code: code };
+        });
+        return call('kline', { code: code, days: want }).then(function (value) {
+          if (token !== klineToken.current) return;
+          setKline({ status: 'ready', data: value, error: null, code: code });
+        }).catch(function (error) {
+          if (token !== klineToken.current) return;
+          setKline({ status: 'error', data: null, error: errorMessage(error, t), code: code });
+        });
+      }, [call, t]);
+
+      /* --- 一键解读 --- */
+      var runInterpret = React.useCallback(function (code) {
+        if (typeof code !== 'string' || code.length === 0) return Promise.resolve();
+        var token = ++readingToken.current;
+        setReading({ status: 'loading', reading: null, error: null });
+        return call('interpret', { code: code }).then(function (value) {
+          if (token !== readingToken.current) return;
+          setReading({ status: 'ready', reading: value && value.reading ? value.reading : null, error: null });
+        }).catch(function (error) {
+          if (token !== readingToken.current) return;
+          setReading({ status: 'error', reading: null, error: errorMessage(error, t) });
+          showToast(t('interpretFailed', { error: errorMessage(error, t) }));
+        });
+      }, [call, t]);
+
       /* --- 全市场列表 --- */
       var loadStockList = React.useCallback(function (patch) {
         var token = ++listToken.current;
@@ -2564,6 +2911,8 @@ window.__ModuleLoader__.load({
 
         // 公司资料与公告独立加载：失败不影响技术面评分
         loadDetailInfo(code);
+        // K 线独立加载
+        loadKline(code, klineDays.current);
 
         var evalTask = call('evaluate', { code: code }).then(function (value) {
           if (token !== evalToken.current) return null;
@@ -2854,6 +3203,28 @@ window.__ModuleLoader__.load({
               setBasisOpen(!basisOpen);
             },
           }),
+          h(KLineChart, {
+            t: t,
+            state: kline,
+            data: kline.data,
+            onRange: function (days) {
+              loadKline(target.code, days);
+            },
+          }),
+          reading.status === 'loading'
+            ? h('section', { className: 'astock-card' },
+              h('h3', { className: 'astock-card-title' }, t('interpretTitle')),
+              h('p', { className: 'astock-card-note' }, t('interpretRunning')))
+            : null,
+          reading.status === 'ready' && reading.reading !== null
+            ? h(ReadingCard, { t: t, reading: reading.reading })
+            : null,
+          reading.status === 'error'
+            ? h('section', { className: 'astock-card' },
+              h('h3', { className: 'astock-card-title' }, t('interpretTitle')),
+              h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+                t('interpretFailed', { error: String(reading.error || '') })))
+            : null,
           detailInfo.status === 'ready' || detailInfo.status === 'loading'
             ? h(CompanyCard, {
               t: t,
@@ -3005,6 +3376,14 @@ window.__ModuleLoader__.load({
                 disabled: detailInfo.status === 'loading' || target.code.length === 0,
                 onClick: function () { runAnalyze(target.code); },
               }, detailInfo.status === 'loading' ? t('analyzeRunning') : t('analyzeOneClick'))
+              : null,
+            tab === 'stock'
+              ? uiButton({
+                variant: 'outline',
+                size: 'sm',
+                disabled: reading.status === 'loading' || target.code.length === 0,
+                onClick: function () { runInterpret(target.code); },
+              }, reading.status === 'loading' ? t('interpretRunning') : t('interpretOneClick'))
               : null,
             tab === 'stock'
               ? uiButton({ variant: 'outline', size: 'sm', onClick: onRefresh },
