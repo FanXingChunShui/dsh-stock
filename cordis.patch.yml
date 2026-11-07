@@ -2,7 +2,7 @@
 # 不写入任何密钥，不上传任何数据。
 - insert:
     - id: astock
-      name: 'dsh-astock'
+      name: 'dsh-stock-surf'
       config:
         enabled: true
         defaultDays: 320

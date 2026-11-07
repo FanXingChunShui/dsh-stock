@@ -1,5 +1,5 @@
 /**
- * dsh-astock — A 股涨跌评估插件。
+ * dsh-stock-surf — A 股涨跌评估插件。
  *
  * 数据来自腾讯免费公开行情接口（实时快照 + 前复权日K），评分完全在本地
  * 计算：不写任何密钥，不上传任何数据，不发送任何用户输入。
@@ -9,7 +9,7 @@
  *   - Agent 工具：`astock_evaluate` / `astock_quote` / `astock_search`，
  *     让模型在对话里直接评估。
  *
- * @module dsh-astock
+ * @module dsh-stock-surf
  */
 import { Config } from './lib/config.js';
 import { WatchlistStore } from './lib/watchlist.js';

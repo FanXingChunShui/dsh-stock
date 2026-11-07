@@ -132,9 +132,9 @@ jobs:
         run: |
           echo "### 已发布到 npm" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`dsh-astock@${{ needs.preflight.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`dsh-stock-surf@${{ needs.preflight.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "安装：\`plugin_manager install_bundle\` 目标 \`dsh-astock@${{ needs.preflight.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "安装：\`plugin_manager install_bundle\` 目标 \`dsh-stock-surf@${{ needs.preflight.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ── 3. 建 GitHub Release（附 tarball） ─────────────────────────────────
   github-release:
@@ -159,7 +159,7 @@ jobs:
         id: pack
         run: |
           npm pack
-          TARBALL=$(ls dsh-astock-*.tgz | head -1)
+          TARBALL=$(ls dsh-stock-surf-*.tgz | head -1)
           echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
           echo "打包完成：$TARBALL"
 

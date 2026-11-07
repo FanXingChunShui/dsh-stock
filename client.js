@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: 'dsh-astock',
+  id: 'dsh-stock-surf',
   factory(require) {
     'use strict';
 

@@ -63,5 +63,5 @@
 - 204 个测试，含纯函数测试与联网冒烟（网络不可达时自动 skip）
 - GitHub Actions：CI（3 个 Node 版本矩阵 + 打包校验）、Release（版本校验 + npm 发布）
 
-[Unreleased]: https://github.com/OWNER/dsh-astock/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/dsh-astock/releases/tag/v0.1.0
+[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.0

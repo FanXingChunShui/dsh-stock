@@ -7,8 +7,8 @@
 ### 1. 建 GitHub 仓库并推送
 
 ```bash
-cd dsh-astock
-git remote add origin git@github.com:<你的账号>/dsh-astock.git
+cd dsh-stock-surf
+git remote add origin git@github.com:FanXingChunShui/dsh-stock.git
 git push -u origin main
 ```
 
@@ -35,10 +35,17 @@ git push -u origin main
 ### 4. 确认包名可用
 
 ```bash
-npm view dsh-astock version   # 若已存在会打印版本号
+npm view dsh-stock-surf version   # 若已存在会打印版本号
 ```
 
-如果包名被占用，改 `package.json` 的 `name`（同时要改 `cordis.patch.yml` 里的 `name` 字段）。
+如果包名被占用，改 `package.json` 的 `name`，**同时**要改这三处：
+
+1. `cordis.patch.yml` 的 `name`（Loader 按它找包）
+2. `client.js` 顶部的 `id:`（必须与包名一致，否则前端模块对不上）
+3. `lib/watchlist.js` 的 `PLUGIN_NAME`（按它定位配置条目，不改会写不进自选股）
+
+`client.js` 里的 `data-plugin="..."` 与 localStorage key 是运行时内部标识，
+**不要跟着改**——改了会让用户已保存的「上次查看代码」丢失。
 
 ## 发版流程
 
@@ -92,10 +99,10 @@ git push && git push --tags
 
 ```bash
 # 方式一：直接从 npm 装
-# 在 DSH 里对 agent 说：安装 dsh-astock 这个 bundle
+# 在 DSH 里对 agent 说：安装 dsh-stock-surf 这个 bundle
 
 # 方式二：下载 tarball 本地装
-npm pack dsh-astock
+npm pack dsh-stock-surf
 # 然后 install_bundle 指向该 .tgz
 ```
 

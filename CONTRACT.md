@@ -1,4 +1,4 @@
-# dsh-astock 接口契约（冻结版）
+# dsh-stock-surf 接口契约（冻结版）
 
 所有并行开发必须严格遵守本文件。任何签名变更必须先改本文件并在群里说明。
 
@@ -281,10 +281,10 @@ endpoints：
 - 侧栏面板：`ctx.slots.register({ name: 'sidebar.panellist', id: 'astock', order: 20, label: () => t('panel'), locale: NS }, PanelIcon)`
 - 主面板：`ctx.slots.register({ name: 'main', key: 'astock', locale: NS, inject: () => ({ rpc: connection.rpc, t }) }, AstockPage)`
 - 必须 `ctx.slots.inject('main', ...)` 与 `ctx.slots.inject('sidebar.panellist', ...)` 包住
-- 文件格式：`window.__ModuleLoader__.load({ id: 'dsh-astock', factory(require) { ... return { inject: [...], apply } } })`
+- 文件格式：`window.__ModuleLoader__.load({ id: 'dsh-stock-surf', factory(require) { ... return { inject: [...], apply } } })`
 - 可用 `require('react')`；`@deepseek-ai/dsh-client-ui-primitives` 和 `@deepseek-ai/dsh-client-store` 要 try/catch 可选引入
 - `inject` 至少 `['slots', 'locale', 'connection']`
-- 样式：自己插 `<style data-plugin="dsh-astock">`，用主题 CSS 变量（`--dsh-*`），不要硬编码颜色
+- 样式：自己插 `<style data-plugin="dsh-astock">`（内部标识，与包名无关，不要改），用主题 CSS 变量（`--dsh-*`），不要硬编码颜色
 - 文案：`locale/zh.json` / `locale/en.json` 由 lead 提供，client.js 内部也内置一份 zh/en 字典（自包含，避免加载顺序问题）
 
 ---

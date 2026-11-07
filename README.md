@@ -1,8 +1,8 @@
-# 股票冲浪（dsh-astock）
+# 股票冲浪（dsh-stock-surf）
 
 给 DeepSeek-Harness 加一副「看盘评估」的面孔：一个 Web 面板，加上五个 Agent 工具。
 
-> 侧栏与面板显示名为「股票冲浪」（英文环境 `Stock Surf`）；包名保持 `dsh-astock` 不变，
+> 侧栏与面板显示名为「股票冲浪」（英文环境 `Stock Surf`）；npm 包名为 `dsh-stock-surf`，
 > 以免改 id 导致自选股等配置丢失。
 
 - **Web 面板**：侧栏 `股票冲浪` 图标 → 主面板，三个 tab：
@@ -19,12 +19,12 @@
 
 ```bash
 # 方式一：让 Harness 自己装（推荐）
-# 对 agent 说：安装 /path/to/dsh-astock 这个 bundle
+# 对 agent 说：安装 /path/to/dsh-stock-surf 这个 bundle
 
 # 方式二：手动挂到 profile 的 cordis.patch.yml
 - insert:
     - id: astock
-      name: 'dsh-astock'   # 或用绝对路径 file:///path/to/dsh-astock/index.js
+      name: 'dsh-stock-surf'   # 或用绝对路径 file:///path/to/dsh-stock-surf/index.js
       config:
         enabled: true
         defaultDays: 320
@@ -147,7 +147,7 @@
 ## 目录结构
 
 ```
-dsh-astock/
+dsh-stock-surf/
 ├── index.js           # 插件入口：RPC 通道 + 工具注册 + 共享评估管线
 ├── client.js          # Web 面板（main + sidebar.panellist 两个槽位）
 ├── lib/
