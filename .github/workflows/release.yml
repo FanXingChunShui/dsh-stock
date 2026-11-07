@@ -2,10 +2,23 @@ name: Release
 
 # 推送 v* tag 时触发：校验版本号 → 全量测试 → 打包 → 发布 npm → 建 GitHub Release
 #
-# 发布前必须配置的仓库 secret：
-#   NPM_TOKEN —— npmjs.com 的 Automation token（Granular Access Token 亦可）
-# 获取方式：npmjs.com → Access Tokens → Generate New Token → Automation
-# 配置位置：仓库 Settings → Secrets and variables → Actions → New repository secret
+# 认证方式：npm Trusted Publishing（OIDC），**不需要任何 secret**。
+#
+# 为什么用 OIDC 而不是 NPM_TOKEN：
+#   - 长期 token 是供应链攻击最想要的东西，泄露即等于发布权限
+#   - OIDC 每次发布换一个短期凭证，用完即失效
+#   - 附带 provenance 来源证明，用户可验证包确实来自本仓库
+#
+# 前置条件（在 npmjs.com 上一次性配置）：
+#   1. 包必须**已经存在**于 npm —— npm 无法为不存在的包配置 trusted publisher。
+#      所以首发必须手动执行一次 `npm publish`（见 RELEASING.md）
+#   2. npmjs.com → 该包 → Settings → Trusted Publishers → Link a repository
+#      Repository owner: FanXingChunShui
+#      Repository name:  dsh-stock
+#      Workflow filename: release.yml
+#      Environment:      （留空，除非本项目配置了 GitHub Environment）
+#   3. workflow 必须声明 id-token: write（下方已声明）
+#   4. npm CLI ≥ 11.5.1（Node 自带的 npm 版本不够，下方有升级步骤）
 on:
   push:
     tags: ['v*']
@@ -107,118 +120,35 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          # 指向官方 registry，并写入 .npmrc 供 npm publish 使用
-          registry-url: 'https://registry.npmjs.org'
+          # ⚠️ 不要设 registry-url：setup-node 会写一行
+          #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          # 到 .npmrc。走 OIDC 时这个变量根本不存在，npm 会拿空 token 去认证
+          # 并报 ENEEDAUTH / 401。OIDC 的身份由 npm CLI 自己完成，不需要 .npmrc。
+          # registry 用默认的 https://registry.npmjs.org
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      # 发布前先确认 token 真的传进来了。
-      # 只在「是否存在」层面打日志，绝不打印 token 内容本身。
-      - name: Check npm token presence
-        run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::error::secrets.NPM_TOKEN 为空——仓库 secret 未配置或名称不匹配（必须一字不差叫 NPM_TOKEN）"
-            exit 1
-          fi
-          echo "✓ NPM_TOKEN 已注入（长度 ${#NODE_AUTH_TOKEN}，前缀 ${NODE_AUTH_TOKEN:0:4}…）"
-          echo "registry: $(npm config get registry)"
-          echo "node: $(node --version) / npm: $(npm --version)"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      # 验证 token 能否通过 registry 认证。
+      # 用 OIDC 发布：不注入任何 token，npm 自己向 GitHub 换取短期凭证。
       #
-      # 注意：`npm whoami` 对 token 权限要求偏高——Granular Access Token
-      # 即使能发布，也可能因为缺少 "Read user" 权限而 whoami 失败。
-      # 所以这里改成直接问 registry「这个 token 是谁」：
-      # 只要能拿到用户名就说明 token 有效且可用于发布。
-      - name: Verify npm credentials
+      # ⚠️ 两个必须满足的条件，否则会 403 或 ENEEDAUTH：
+      #   1. job 必须声明 id-token: write（下方 permissions 已声明）
+      #   2. npm CLI ≥ 11.5.1 —— Node 22 自带的是 npm 10.x，不够
+      - name: Upgrade npm for OIDC support
+        run: |
+          CURRENT=$(npm --version)
+          echo "当前 npm: $CURRENT（OIDC 需要 ≥ 11.5.1）"
+          npm install -g npm@11
+          echo "升级后 npm: $(npm --version)"
+
+      - name: Publish via trusted publishing (OIDC)
         shell: bash
         run: |
-          set +e
-          # 方式一：npm whoami（最权威，但 Granular token 可能不支持）
-          WHOAMI=$(npm whoami 2>&1)
-          WHOAMI_CODE=$?
-          # 方式二：直接打 registry 的 whoami 接口，用 token 做 Bearer
-          HTTP=$(curl -s -o /tmp/whoami.json -w '%{http_code}' \
-            -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
-            https://registry.npmjs.org/-/whoami)
-          set -e
-
-          echo "npm whoami 退出码: $WHOAMI_CODE"
-          echo "registry /-/whoami HTTP: $HTTP"
-
-          if [ $WHOAMI_CODE -eq 0 ]; then
-            echo "✓ npm 身份：$WHOAMI"
-            exit 0
-          fi
-
-          # whoami 失败时看 registry 直接调用是否成功
-          if [ "$HTTP" = "200" ]; then
-            echo "✓ registry 认证通过（npm whoami 因权限模型不适用，忽略）"
-            cat /tmp/whoami.json
-            exit 0
-          fi
-
-          # 两条路都失败，才判定凭证无效，并打印可读原因
-          # 把可诊断的特征放进 annotation（annotation 公开可读，
-          # 而普通 echo 日志需要 admin 权限才能看）。
-          # 只暴露长度与前缀/后缀各 3 位，不足以还原 token。
-          TLEN=${#NODE_AUTH_TOKEN}
-          TPRE="${NODE_AUTH_TOKEN:0:3}"
-          TSUF="${NODE_AUTH_TOKEN: -3}"
-          SHAPE="unknown"
-          case "$NODE_AUTH_TOKEN" in
-            npm_*) SHAPE="npm_ 前缀（标准 npm token）";;
-            *[[:space:]]*) SHAPE="含空白字符（复制时混入了空格/换行）";;
-            *) SHAPE="非 npm_ 前缀（可能是 GitHub token 或别的凭证）";;
-          esac
-          echo "::error::npm 凭证无效 | 长度=$TLEN 前缀=$TPRE… 后缀=…$TSUF | 形态=$SHAPE | registry HTTP=$HTTP"
-          echo "--- npm whoami 输出 ---"
-          echo "$WHOAMI"
-          echo "--- registry 响应（HTTP $HTTP）---"
-          cat /tmp/whoami.json 2>/dev/null || true
-          echo "--- 排查清单 ---"
-          echo "1. token 是否已过期或被撤销（npmjs.com → Access Tokens）"
-          echo "2. token 类型：Automation 最佳；Granular 需勾 Read and write + 选中该包"
-          echo "3. 复制时是否带了空格/换行"
-          echo "4. 该 npm 账号是否已验证邮箱"
-          exit 1
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      # provenance 会附带 SLSA 来源证明，但要求仓库是**公开**的。
-      # 私有仓库 + --provenance 会直接报错，所以用变量控制：
-      # 公开仓库保持开启（默认），私有仓库把仓库变量 ENABLE_PROVENANCE 设为 false。
-      - name: Publish
-        shell: bash
-        run: |
-          # ⚠️ 必须开 pipefail。
-          # `npm publish ... | tee publish.log` 的退出码是 **tee 的**，不是 npm 的：
-          # tee 成功写入就返回 0，于是 npm publish 失败时步骤照样显示 success，
-          # 结果就是「Release 绿了但 npm 上根本没有这个包」。
+          # pipefail：`npm publish | tee` 的退出码是 tee 的，会把失败伪装成成功
           set -o pipefail
-          if [ "${{ vars.ENABLE_PROVENANCE }}" = "false" ]; then
-            echo "provenance 已关闭，普通发布"
-            npm publish --access public 2>&1 | tee publish.log
-          else
-            echo "provenance 开启"
-            npm publish --access public --provenance 2>&1 | tee publish.log
-          fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      # 发布失败时把 npm 的完整错误贴到 Job Summary，
-      # 这样不用下载日志、也不用 admin 权限就能看到原因。
-      - name: Show publish failure details
-        if: failure()
-        run: |
-          echo "### npm publish 失败" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
-          if [ -f publish.log ]; then tail -40 publish.log >> $GITHUB_STEP_SUMMARY; fi
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          # --provenance 在 OIDC 下是自然配套的：来源证明由同一个 OIDC 身份签发
+          npm publish --access public --provenance 2>&1 | tee publish.log
+        # 注意：这里**没有** NODE_AUTH_TOKEN —— 全靠 OIDC
 
       # 发布后再向 registry 查一次，确认包真的上线了。
       # 这是对「步骤成功 ≠ 发布成功」的兜底验证。
@@ -322,7 +252,9 @@ jobs:
           if [ "${{ needs.publish-npm.result }}" = "failure" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ npm 发布失败。常见原因：" >> $GITHUB_STEP_SUMMARY
-            echo "- 未配置 \`NPM_TOKEN\` secret" >> $GITHUB_STEP_SUMMARY
+            echo "- **包在 npm 上还不存在**——trusted publisher 只能配置到已存在的包上，首发需手动 publish" >> $GITHUB_STEP_SUMMARY
+            echo "- npmjs.com 上未配置 Trusted Publisher（Settings → Trusted Publishers → Link a repository）" >> $GITHUB_STEP_SUMMARY
+            echo "- 配置里的 Workflow filename 与本文件不一致（必须是 \`release.yml\`）" >> $GITHUB_STEP_SUMMARY
+            echo "- npm CLI 版本 < 11.5.1（本 workflow 已自动升级，除非升级步骤失败）" >> $GITHUB_STEP_SUMMARY
             echo "- 该版本号已存在于 npm（npm 不允许覆盖已发布版本，需先改 version）" >> $GITHUB_STEP_SUMMARY
-            echo "- token 无发布权限或已过期" >> $GITHUB_STEP_SUMMARY
           fi

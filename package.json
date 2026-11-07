@@ -71,5 +71,11 @@
   },
   "bugs": {
     "url": "https://github.com/FanXingChunShui/dsh-stock/issues"
-  }
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "devDependencies": {},
+  "author": "849381206@qq.com"
 }

@@ -12,17 +12,52 @@ git remote add origin git@github.com:FanXingChunShui/dsh-stock.git
 git push -u origin main
 ```
 
-### 2. 配置 npm 发布令牌
+### 2. 配置 npm Trusted Publishing（OIDC，无需 token）
 
-1. 登录 [npmjs.com](https://www.npmjs.com) → 右上角头像 → **Access Tokens**
-2. **Generate New Token** → 选 **Automation**（CI 专用，可绕过 2FA）
-3. 复制令牌（只显示一次）
-4. 到 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
-   → **New repository secret**
-   - Name: `NPM_TOKEN`
-   - Secret: 粘贴令牌
+本项目用 **OIDC 可信发布**，不在仓库里存任何 npm token。长期 token 是供应链攻击
+最想要的东西；OIDC 每次发布换一个短期凭证，用完即失效，还附带来源证明。
 
-> ⚠️ 用 **Automation** 类型。Classic 的 Publish 类型在开启 2FA 的账号上会失败。
+#### 2.1 首包必须先存在于 npm
+
+npm **无法为不存在的包配置 trusted publisher**。所以第一次必须先建包，二选一：
+
+**方式 A：用官方工具一步到位（推荐）**
+
+```bash
+npm login                     # 用你的 npm 账号登录
+npx --yes setup-npm-trusted-publish dsh-stock-surf
+```
+
+它会：创建占位包 → 自动配置 trusted publisher 指向本仓库的 `release.yml`。
+
+**方式 B：手动首发**
+
+```bash
+npm login
+npm publish --access public   # 在仓库根目录执行，会发布当前的 0.1.0
+```
+
+然后到 npmjs.com 手动配置（见 2.2）。
+
+> 方式 B 发布出去的 0.1.0 没有 provenance 徽章，从下个版本起 OIDC 会自动带上。
+
+#### 2.2 在 npmjs.com 上关联仓库
+
+包页面 → **Settings** → **Trusted Publishers** → **Link a repository**：
+
+| 字段 | 填什么 |
+|---|---|
+| Repository owner | `FanXingChunShui` |
+| Repository name | `dsh-stock` |
+| Workflow filename | `release.yml` |
+| Environment | **留空**（本项目没用 GitHub Environment） |
+
+> Workflow filename 必须**一字不差**是 `release.yml`。填错会 403。
+
+#### 2.3 删掉旧的 NPM_TOKEN（如果配过）
+
+OIDC 不需要它。到 Settings → Secrets and variables → Actions 删掉 `NPM_TOKEN`，
+避免误以为还在用它。
 
 ### 3. 确认仓库是公开的（provenance 要求）
 
@@ -87,9 +122,12 @@ git push && git push --tags
 |---|---|---|
 | `tag (vX.Y.Z) 与 package.json (A.B.C) 版本不一致` | tag 与版本号不匹配 | 改 `package.json` 的 version，删 tag 重打 |
 | `private 必须是 false` | `package.json` 里 `private: true` | 改成 `false` |
-| `npm publish` 报 403 | `NPM_TOKEN` 缺失/过期/权限不足 | 重新生成 Automation token 并更新 secret |
+| `npm publish` 报 403 | npmjs.com 上未配 trusted publisher，或 Workflow filename 不匹配 | 检查 Settings → Trusted Publishers，filename 必须一字不差是 `release.yml` |
 | `npm publish` 报 403 `cannot publish over` | 该版本号已存在 | npm 不允许覆盖，必须升版本号 |
-| `ENEEDAUTH` | 未配置 `registry-url` 或 token 未注入 | 检查 workflow 的 `setup-node` 参数 |
+| `ENEEDAUTH` | **设了 `registry-url`** —— setup-node 会写 `_authToken=${NODE_AUTH_TOKEN}` 到 .npmrc，但 OIDC 下该变量不存在 | 移除 workflow 里的 `registry-url` |
+| `OIDC token exchange failed` | job 缺 `id-token: write` | job 级 `permissions` 必须显式声明 |
+| `npm CLI too old` | 用了 Node 自带的 npm 10.x | workflow 里有 `npm install -g npm@11` 步骤 |
+| **包在 npm 不存在** | trusted publisher 只能配到已存在的包 | 先手动 `npm publish` 一次做首发 |
 | 联网测试失败 | GitHub runner 访问国内接口不稳定 | 测试自带 `isOnline()` 探测并 skip，正常不会红；若真红了说明代码 bug |
 | `Assert required files are packaged` 失败 | 曾用 `grep " $file "` 做文本断言，但 `npm pack` 的文件清单按列宽动态对齐，文件名后补多空格 | 已改用 `scripts/verify-pack.mjs`（走 `npm pack --dry-run --json` 拿结构化列表）。若仍失败，看日志里具体哪个文件缺失，检查 `package.json` 的 `files` 字段 |
 
@@ -99,7 +137,7 @@ git push && git push --tags
 
 ```bash
 # 方式一：直接从 npm 装
-# 在 DSH 里对 agent 说：安装 dsh-stock-surf 这个 bundle
+# 在 DSH 里对 agent 说：安装 dsh-stock-surf 这个包
 
 # 方式二：下载 tarball 本地装
 npm pack dsh-stock-surf
