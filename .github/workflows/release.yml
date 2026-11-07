@@ -162,7 +162,19 @@ jobs:
           fi
 
           # 两条路都失败，才判定凭证无效，并打印可读原因
-          echo "::error::npm 凭证无效"
+          # 把可诊断的特征放进 annotation（annotation 公开可读，
+          # 而普通 echo 日志需要 admin 权限才能看）。
+          # 只暴露长度与前缀/后缀各 3 位，不足以还原 token。
+          TLEN=${#NODE_AUTH_TOKEN}
+          TPRE="${NODE_AUTH_TOKEN:0:3}"
+          TSUF="${NODE_AUTH_TOKEN: -3}"
+          SHAPE="unknown"
+          case "$NODE_AUTH_TOKEN" in
+            npm_*) SHAPE="npm_ 前缀（标准 npm token）";;
+            *[[:space:]]*) SHAPE="含空白字符（复制时混入了空格/换行）";;
+            *) SHAPE="非 npm_ 前缀（可能是 GitHub token 或别的凭证）";;
+          esac
+          echo "::error::npm 凭证无效 | 长度=$TLEN 前缀=$TPRE… 后缀=…$TSUF | 形态=$SHAPE | registry HTTP=$HTTP"
           echo "--- npm whoami 输出 ---"
           echo "$WHOAMI"
           echo "--- registry 响应（HTTP $HTTP）---"
