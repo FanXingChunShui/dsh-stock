@@ -1,0 +1,74 @@
+{
+  "name": "dsh-astock",
+  "version": "0.1.0",
+  "private": false,
+  "description": "股票冲浪：A股/港股/美股行情与涨跌评估插件，多因子技术评分 + 板块与个股列表，提供 Web 面板与 Agent 工具",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib/*.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "README.md",
+    "icon.svg",
+    "CONTRACT.md",
+    "DATA-SOURCES.md",
+    "CHANGELOG.md",
+    "RELEASING.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "astock",
+    "stock",
+    "technical-analysis"
+  ],
+  "license": "MIT",
+  "icon": "./icon.svg",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.5"
+  },
+  "scripts": {
+    "test": "node --test tests/",
+    "test:offline": "node --test tests/score.test.mjs tests/sector-score.test.mjs",
+    "lint:syntax": "node --check index.js && node --check client.js && node --check lib/config.js && node --check lib/quote.js && node --check lib/rpc.js && node --check lib/score.js && node --check lib/sector.js && node --check lib/sector-score.js && node --check lib/stock-detail.js && node --check lib/stock-list.js && node --check lib/tools.js && node --check lib/watchlist.js",
+    "verify:json": "node -e \"for (const f of ['package.json','locale/zh.json','locale/en.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON OK')\"",
+    "verify:exports": "node -e \"import('./index.js').then(m => { if (typeof m.apply !== 'function') throw new Error('apply 缺失'); if (typeof m.Config === 'undefined') throw new Error('Config 缺失'); console.log('exports OK'); })\"",
+    "verify:pack": "npm pack --dry-run",
+    "prepublishOnly": "npm run lint:syntax && npm run verify:json && npm run test"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/OWNER/dsh-astock#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/dsh-astock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OWNER/dsh-astock/issues"
+  }
+}

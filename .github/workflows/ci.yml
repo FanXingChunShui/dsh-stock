@@ -1,0 +1,152 @@
+name: CI
+
+# 每次推送到 main 或发 PR 时跑：语法校验 → JSON 校验 → 导出校验 → 全量测试 → 打包验证
+on:
+  push:
+    branches: [main]
+    # 发 tag 时不重复跑 CI，交给 release.yml
+    tags-ignore: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一分支的旧运行自动取消，避免排队浪费
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1. 离线测试：不依赖任何外部接口，最快给出信号 ──────────────────────
+  test-offline:
+    name: Test (offline, Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 18 是本插件声明的 engines 下限；20/22 是 LTS；24 探前向兼容
+        node: ['18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Syntax check (all source files)
+        run: npm run lint:syntax
+
+      - name: Validate JSON resources
+        run: npm run verify:json
+
+      - name: Verify plugin exports
+        run: npm run verify:exports
+
+      # 纯函数测试：评分引擎与板块评分，零网络依赖，必须全绿
+      - name: Offline tests (pure functions)
+        run: npm run test:offline
+
+  # ── 2. 全量测试：含联网用例，网络不通时用例自身 skip 而非失败 ──────────
+  test-full:
+    name: Test (full, Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # 联网用例（腾讯/新浪/东财）在 runner 上可能不可达。
+      # 测试内部用 isOnline() 探测后 t.skip，所以这里不会因为外网问题红。
+      - name: Full test suite
+        run: npm test
+
+      - name: Summarize test results
+        if: always()
+        run: |
+          echo "### 测试结果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "全量测试已执行。联网用例在接口不可达时会自动 skip（见上方日志的 skipped 计数）。" >> $GITHUB_STEP_SUMMARY
+
+  # ── 3. 打包验证：确保 npm 包里该有的文件都在、不该有的没混进去 ────────
+  verify-pack:
+    name: Verify package contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # ⚠️ npm pack 的文件清单走 stderr，必须 2>&1 才能被 tee 捕获；
+      # 只写 `> file` 会得到空文件，导致后面的断言全部误报「缺失」。
+      - name: Pack and inspect
+        run: |
+          npm pack --dry-run 2>&1 | tee pack-output.txt
+          echo "### 打包内容" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E 'npm notice [0-9]' pack-output.txt >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # 断言关键文件都在包里，避免 files 字段写漏导致发布残缺包
+      - name: Assert required files are packaged
+        run: |
+          set -e
+          if [ ! -s pack-output.txt ]; then
+            echo "❌ pack-output.txt 为空：npm pack 输出未被捕获"
+            exit 1
+          fi
+          for f in index.js client.js cordis.patch.yml icon.svg package.json \
+                   locale/zh.json locale/en.json lib/quote.js lib/score.js \
+                   lib/rpc.js lib/tools.js; do
+            if ! grep -q " $f " pack-output.txt; then
+              echo "❌ 缺失文件：$f"
+              exit 1
+            fi
+            echo "✓ $f"
+          done
+
+      # 反向断言：node_modules 与测试文件不应进包
+      - name: Assert excluded files are absent
+        run: |
+          set -e
+          for f in node_modules tests/ .github/; do
+            if grep -q "$f" pack-output.txt; then
+              echo "❌ 不应打包的文件出现在包里：$f"
+              exit 1
+            fi
+            echo "✓ 已排除 $f"
+          done
+
+  # ── 4. 全绿才允许后续发布（release.yml 复用此结论） ────────────────────
+  ci-success:
+    name: CI success
+    needs: [test-offline, test-full, verify-pack]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.test-offline.result }}" != "success" ] || \
+             [ "${{ needs.test-full.result }}" != "success" ] || \
+             [ "${{ needs.verify-pack.result }}" != "success" ]; then
+            echo "❌ 有 job 未通过"
+            exit 1
+          fi
+          echo "✅ 全部通过"

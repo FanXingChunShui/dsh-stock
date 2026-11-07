@@ -1,0 +1,13 @@
+# 注册 A 股评估插件。行情走腾讯免费公开接口，评分在本地计算，
+# 不写入任何密钥，不上传任何数据。
+- insert:
+    - id: astock
+      name: 'dsh-astock'
+      config:
+        enabled: true
+        defaultDays: 320
+        timeoutMs: 8000
+        watchlist:
+          - '600519'
+          - '000001'
+          - '300750'

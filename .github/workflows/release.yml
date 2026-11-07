@@ -1,0 +1,214 @@
+name: Release
+
+# 推送 v* tag 时触发：校验版本号 → 全量测试 → 打包 → 发布 npm → 建 GitHub Release
+#
+# 发布前必须配置的仓库 secret：
+#   NPM_TOKEN —— npmjs.com 的 Automation token（Granular Access Token 亦可）
+# 获取方式：npmjs.com → Access Tokens → Generate New Token → Automation
+# 配置位置：仓库 Settings → Secrets and variables → Actions → New repository secret
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: '只跑校验与打包，不实际发布'
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # 建 GitHub Release 需要
+  # npm publish --provenance 需要 OIDC 令牌来签发来源证明（SLSA provenance）。
+  # 缺这个权限会直接报 "Provenance generation failed" 或 401。
+  id-token: write
+
+jobs:
+  # ── 1. 发布前校验：版本号一致性 + 全量测试 ──────────────────────────────
+  preflight:
+    name: Preflight checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # tag 必须与 package.json 的 version 完全一致，否则发布出的版本号和 tag 对不上
+      - name: Verify tag matches package.json version
+        id: version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
+          echo "package.json version: $PKG_VERSION"
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF#refs/tags/v}"
+            echo "git tag version: $TAG"
+            if [ "$PKG_VERSION" != "$TAG" ]; then
+              echo "❌ tag (v$TAG) 与 package.json ($PKG_VERSION) 版本不一致"
+              echo "   请先把 package.json 的 version 改成 $TAG 再打 tag"
+              exit 1
+            fi
+            echo "✅ 版本一致：$PKG_VERSION"
+          else
+            echo "手动触发，跳过 tag 一致性检查"
+          fi
+
+      - name: Verify private flag is false
+        run: |
+          PRIVATE=$(node -p "require('./package.json').private")
+          if [ "$PRIVATE" != "false" ]; then
+            echo "❌ package.json 的 private 必须是 false 才能发布，当前：$PRIVATE"
+            exit 1
+          fi
+          echo "✅ 可发布"
+
+      - name: Syntax check
+        run: npm run lint:syntax
+
+      - name: Validate JSON
+        run: npm run verify:json
+
+      - name: Verify exports
+        run: npm run verify:exports
+
+      - name: Full test suite
+        run: npm test
+
+  # ── 2. 发布到 npm ──────────────────────────────────────────────────────
+  publish-npm:
+    name: Publish to npm
+    needs: preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # provenance 签名必需
+    # 手动触发且勾了 dry-run 时不发布
+    if: github.event_name == 'push' || inputs.dry-run == false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          # 指向官方 registry，并写入 .npmrc 供 npm publish 使用
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Show what will be published
+        run: npm pack --dry-run
+
+      # provenance 会附带 SLSA 来源证明，但要求仓库是**公开**的。
+      # 私有仓库 + --provenance 会直接报错，所以用变量控制：
+      # 公开仓库保持开启（默认），私有仓库把仓库变量 ENABLE_PROVENANCE 设为 false。
+      - name: Publish
+        run: |
+          if [ "${{ vars.ENABLE_PROVENANCE }}" = "false" ]; then
+            echo "provenance 已关闭，普通发布"
+            npm publish --access public
+          else
+            echo "provenance 开启"
+            npm publish --access public --provenance
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish summary
+        run: |
+          echo "### 已发布到 npm" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`dsh-astock@${{ needs.preflight.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "安装：\`plugin_manager install_bundle\` 目标 \`dsh-astock@${{ needs.preflight.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ── 3. 建 GitHub Release（附 tarball） ─────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [preflight, publish-npm]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 生成完整 changelog 需要历史
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build tarball
+        id: pack
+        run: |
+          npm pack
+          TARBALL=$(ls dsh-astock-*.tgz | head -1)
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+          echo "打包完成：$TARBALL"
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          VERSION="${{ needs.preflight.outputs.version }}"
+          if [ -f CHANGELOG.md ] && grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            # 抽出当前版本那一节
+            awk "/^## \[$VERSION\]/{flag=1;next}/^## \[/{flag=0}flag" CHANGELOG.md > release-notes.md
+          else
+            echo "版本 $VERSION" > release-notes.md
+            echo "" >> release-notes.md
+            git log --pretty=format:'- %s (%h)' $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo '')..HEAD >> release-notes.md 2>/dev/null || echo "- 首个版本" >> release-notes.md
+          fi
+          cat release-notes.md
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ needs.preflight.outputs.version }}
+          body_path: release-notes.md
+          files: ${{ steps.pack.outputs.tarball }}
+          draft: false
+          prerelease: ${{ contains(needs.preflight.outputs.version, '-') }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── 4. 发布结果汇总 ────────────────────────────────────────────────────
+  summary:
+    name: Release summary
+    needs: [preflight, publish-npm, github-release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Report
+        run: |
+          echo "### 发布结果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 步骤 | 结果 |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| 预检 | ${{ needs.preflight.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| npm 发布 | ${{ needs.publish-npm.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub Release | ${{ needs.github-release.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.publish-npm.result }}" = "failure" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ npm 发布失败。常见原因：" >> $GITHUB_STEP_SUMMARY
+            echo "- 未配置 \`NPM_TOKEN\` secret" >> $GITHUB_STEP_SUMMARY
+            echo "- 该版本号已存在于 npm（npm 不允许覆盖已发布版本，需先改 version）" >> $GITHUB_STEP_SUMMARY
+            echo "- token 无发布权限或已过期" >> $GITHUB_STEP_SUMMARY
+          fi
