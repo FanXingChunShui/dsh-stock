@@ -190,6 +190,58 @@ window.__ModuleLoader__.load({
       tabStock: 'Stock',
       tabSector: 'Sectors',
       tabList: 'List',
+      tabQuant: 'Quant',
+      quantSubBacktest: 'Single backtest',
+      quantSubScan: 'Market scan',
+      quantSubPortfolio: 'Portfolio',
+      quantStrategy: 'Strategy',
+      quantStrategyScore: 'Score threshold',
+      quantStrategyMa: 'MA cross',
+      quantStrategyBreakout: 'Breakout',
+      quantRange: 'Range',
+      quantDaysOption: '{{n}} bars',
+      quantRun: 'Run backtest',
+      quantRunning: 'Backtesting…',
+      quantScanRun: 'Scan market',
+      quantScanning: 'Scanning…',
+      quantPortfolioRun: 'Backtest portfolio',
+      quantLoading: 'Crunching historical bars…',
+      quantScanLoading: 'Pulling the full market list and scoring candidates, this can take a few seconds the first time…',
+      quantFailed: 'Failed: {{error}}',
+      quantIdle: 'Pick a strategy and range, then run a backtest. The engine replays history bar by bar with no look-ahead, fills at next open, and deducts fees.',
+      quantScanIdle: 'Scan the whole A-share market: screen on cross-sectional data first, then score only the shortlisted names with full technicals.',
+      quantPortfolioIdle: 'Backtest your watchlist as an equal-weight portfolio.',
+      quantPortfolioHint: '{{n}} names in the watchlist',
+      quantNoResult: 'No result.',
+      quantNoEquity: 'Not enough equity points to draw a curve.',
+      quantBacktestTitle: 'Quant backtest',
+      quantPortfolioTitle: 'Portfolio backtest',
+      quantScanTitle: 'Market scan',
+      quantEquityTitle: 'Equity curve',
+      quantLegendEquity: 'Strategy',
+      quantLegendBench: 'Buy & hold',
+      quantTotalReturn: 'Total return',
+      quantAnnual: 'Annualised',
+      quantBenchmark: 'Buy & hold',
+      quantDrawdown: 'Max drawdown',
+      quantSharpe: 'Sharpe',
+      quantWinRate: 'Win rate',
+      quantMembers: 'Members',
+      quantTrades: '{{n}} trades',
+      quantTradesUnit: ' trades',
+      quantDaysUnit: 'd',
+      quantMeta: '{{strategy}} · {{from}} ~ {{to}} · {{bars}} bars',
+      quantDaysOptionPlaceholder: '',
+      quantAdjustedBadge: 'Forward-adjusted',
+      quantAdjustedTip: 'Prices forward-adjusted over {{n}} ex-dividend events',
+      quantTradeList: '{{n}} trades (latest 30 shown)',
+      quantColEntry: 'Entry',
+      quantColExit: 'Exit',
+      quantColHold: 'Held',
+      quantColPnl: 'P&L',
+      quantColName: 'Name',
+      quantScanMeta: '{{universe}} listed · {{passed}} screened · {{shortlist}} fully scored · {{ms}}ms',
+      quantHintShort: '',
       marketCn: 'CN',
       marketHk: 'HK',
       marketUs: 'US',
@@ -407,6 +459,58 @@ window.__ModuleLoader__.load({
       tabStock: '个股',
       tabSector: '板块',
       tabList: '列表',
+      tabQuant: '量化',
+      quantSubBacktest: '单股回测',
+      quantSubScan: '选股扫描',
+      quantSubPortfolio: '组合回测',
+      quantStrategy: '策略',
+      quantStrategyScore: '评分阈值',
+      quantStrategyMa: '均线交叉',
+      quantStrategyBreakout: '区间突破',
+      quantRange: '区间',
+      quantDaysOption: '{{n}} 根',
+      quantRun: '开始回测',
+      quantRunning: '回测中…',
+      quantScanRun: '扫描全市场',
+      quantScanning: '扫描中…',
+      quantPortfolioRun: '回测组合',
+      quantLoading: '正在重放历史行情…',
+      quantScanLoading: '正在拉取全市场列表并评分候选股，首次可能需要几秒…',
+      quantFailed: '失败：{{error}}',
+      quantIdle: '选择策略与区间后开始回测。引擎逐根重放历史、绝不使用未来数据，按次日开盘价成交，并扣除手续费与印花税。',
+      quantScanIdle: '扫描整个 A 股市场：先用截面数据粗筛，再对候选股做完整技术面评分。',
+      quantPortfolioIdle: '把自选股当作等权组合做回测。',
+      quantPortfolioHint: '自选股 {{n}} 只',
+      quantNoResult: '没有结果。',
+      quantNoEquity: '净值点不足，无法绘制曲线。',
+      quantBacktestTitle: '量化回测',
+      quantPortfolioTitle: '组合回测',
+      quantScanTitle: '全市场选股',
+      quantEquityTitle: '净值曲线',
+      quantLegendEquity: '策略净值',
+      quantLegendBench: '买入持有',
+      quantTotalReturn: '总收益',
+      quantAnnual: '年化',
+      quantBenchmark: '基准收益',
+      quantDrawdown: '最大回撤',
+      quantSharpe: '夏普',
+      quantWinRate: '胜率',
+      quantMembers: '成分数',
+      quantTrades: '{{n}} 笔交易',
+      quantTradesUnit: ' 笔',
+      quantDaysUnit: ' 天',
+      quantMeta: '{{strategy}} · {{from}} ~ {{to}} · {{bars}} 根 K 线',
+      quantDaysOptionPlaceholder: '',
+      quantAdjustedBadge: '前复权',
+      quantAdjustedTip: '已按 {{n}} 次除权除息事件做前复权',
+      quantTradeList: '{{n}} 笔交易（显示最近 30 笔）',
+      quantColEntry: '买入',
+      quantColExit: '卖出',
+      quantColHold: '持有',
+      quantColPnl: '盈亏',
+      quantColName: '名称',
+      quantScanMeta: '全市场 {{universe}} 只 · 粗筛通过 {{passed}} 只 · 完整评分 {{shortlist}} 只 · 耗时 {{ms}}ms',
+      quantHintShort: '',
       marketCn: 'A股',
       marketHk: '港股',
       marketUs: '美股',
@@ -2184,6 +2288,479 @@ window.__ModuleLoader__.load({
         }, inWatch ? '✓' : '＋'));
     }
 
+    /* ════════════════════════════════════════════════════════════════
+     * 量化（v5）
+     *
+     * 三个子视图：单股回测 / 选股扫描 / 组合回测。
+     * 全部走 /astock 的 quant/* 端点，与个股、板块、列表共用同一条通道。
+     * ════════════════════════════════════════════════════════════════ */
+
+    /** 净值曲线：纯 SVG 折线，不引入任何图表库。 */
+    function EquityChart(props) {
+      var t = props.t;
+      var equity = props.equity;
+      var bench = props.benchmark;
+      var height = props.height || 180;
+
+      if (!Array.isArray(equity) || equity.length < 2) {
+        return h('p', { className: 'astock-card-note' }, t('quantNoEquity'));
+      }
+
+      var width = 720;
+      var padL = 46;
+      var padR = 10;
+      var padT = 10;
+      var padB = 22;
+      var plotW = width - padL - padR;
+      var plotH = height - padT - padB;
+
+      var values = [];
+      for (var i = 0; i < equity.length; i += 1) {
+        var v = asNumber(equity[i].equity);
+        if (v !== null) values.push(v);
+      }
+      var benchValues = [];
+      if (Array.isArray(bench)) {
+        for (var b = 0; b < bench.length; b += 1) {
+          var bv = asNumber(bench[b].equity);
+          if (bv !== null) benchValues.push(bv);
+        }
+      }
+      if (values.length < 2) return h('p', { className: 'astock-card-note' }, t('quantNoEquity'));
+
+      var all = values.concat(benchValues);
+      var min = Math.min.apply(null, all);
+      var max = Math.max.apply(null, all);
+      if (max - min < 1e-9) {
+        // 全程净值不变：撑开一点纵向范围，否则折线贴边看不出
+        min = min - 1;
+        max = max + 1;
+      }
+      var span = max - min;
+
+      function px(index, total) {
+        return padL + (total <= 1 ? 0 : (index / (total - 1)) * plotW);
+      }
+      function py(value) {
+        return padT + plotH - ((value - min) / span) * plotH;
+      }
+
+      function pathOf(list, pick) {
+        var parts = [];
+        for (var i = 0; i < list.length; i += 1) {
+          var value = asNumber(pick(list[i]));
+          if (value === null) continue;
+          parts.push((parts.length === 0 ? 'M' : 'L') + px(i, list.length).toFixed(2) + ' ' + py(value).toFixed(2));
+        }
+        return parts.join(' ');
+      }
+
+      var mainPath = pathOf(equity, function (p) { return p.equity; });
+      var benchPath = benchValues.length >= 2 ? pathOf(bench, function (p) { return p.equity; }) : '';
+
+      // 网格线：4 条横向参考线
+      var grid = [];
+      for (var g = 0; g <= 3; g += 1) {
+        var gy = padT + (plotH / 3) * g;
+        var gv = max - (span / 3) * g;
+        grid.push(h('line', {
+          key: 'grid' + g,
+          x1: padL, y1: gy, x2: padL + plotW, y2: gy,
+          stroke: 'var(--astock-border)', strokeWidth: 1, opacity: 0.5,
+        }));
+        grid.push(h('text', {
+          key: 'glabel' + g,
+          x: padL - 6, y: gy + 3,
+          textAnchor: 'end', fontSize: 10, fill: 'var(--astock-muted)',
+        }, gv.toFixed(1)));
+      }
+
+      var first = equity[0].date;
+      var last = equity[equity.length - 1].date;
+
+      return h('div', { className: 'astock-quant-chart' },
+        h('svg', {
+          viewBox: '0 0 ' + width + ' ' + height,
+          className: 'astock-quant-svg',
+          role: 'img',
+          'aria-label': t('quantEquityTitle'),
+          preserveAspectRatio: 'none',
+        },
+          grid,
+          benchPath
+            ? h('path', { d: benchPath, fill: 'none', stroke: 'var(--astock-muted)', strokeWidth: 1.4, strokeDasharray: '4 3', opacity: 0.8 })
+            : null,
+          h('path', { d: mainPath, fill: 'none', stroke: 'var(--astock-accent)', strokeWidth: 1.8 }),
+        ),
+        h('div', { className: 'astock-quant-legend' },
+          h('span', { className: 'astock-quant-legend-item' },
+            h('i', { className: 'astock-quant-dot', 'data-kind': 'main' }),
+            t('quantLegendEquity')),
+          benchPath
+            ? h('span', { className: 'astock-quant-legend-item' },
+              h('i', { className: 'astock-quant-dot', 'data-kind': 'bench' }),
+              t('quantLegendBench'))
+            : null,
+          h('span', { className: 'astock-quant-range' }, first + ' ~ ' + last)),
+      );
+    }
+
+    /** 回测指标卡：大数字 + 说明。 */
+    function QuantStat(props) {
+      var tone = props.tone || 'flat';
+      return h('div', { className: 'astock-quant-stat', 'data-tone': tone },
+        h('span', { className: 'astock-quant-stat-label' }, props.label),
+        h('span', { className: 'astock-quant-stat-value' }, props.value),
+        props.note ? h('span', { className: 'astock-quant-stat-note' }, props.note) : null);
+    }
+
+    /** 单股回测视图。 */
+    function QuantBacktest(props) {
+      var t = props.t;
+      var state = props.state;
+      var strategy = props.strategy;
+      var days = props.days;
+      var onStrategy = props.onStrategy;
+      var onDays = props.onDays;
+      var onRun = props.onRun;
+
+      var strategies = [
+        { key: 'score-threshold', label: t('quantStrategyScore') },
+        { key: 'ma-cross', label: t('quantStrategyMa') },
+        { key: 'breakout', label: t('quantStrategyBreakout') },
+      ];
+      var dayOptions = [300, 600, 1200, 1500];
+
+      var control = h('div', { className: 'astock-quant-controls' },
+        h('label', { className: 'astock-quant-field' },
+          h('span', null, t('quantStrategy')),
+          h('select', {
+            value: strategy,
+            onChange: function (event) { onStrategy(event.target.value); },
+          }, strategies.map(function (s) {
+            return h('option', { key: s.key, value: s.key }, s.label);
+          }))),
+        h('label', { className: 'astock-quant-field' },
+          h('span', null, t('quantRange')),
+          h('select', {
+            value: String(days),
+            onChange: function (event) { onDays(Number(event.target.value)); },
+          }, dayOptions.map(function (d) {
+            return h('option', { key: d, value: String(d) }, t('quantDaysOption', { n: d }));
+          }))),
+        uiButton({
+          variant: 'primary',
+          size: 'sm',
+          disabled: state.status === 'loading',
+          onClick: onRun,
+        }, state.status === 'loading' ? t('quantRunning') : t('quantRun')));
+
+      if (state.status === 'loading') {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' }, t('quantLoading'))));
+      }
+      if (state.status === 'error') {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+              t('quantFailed', { error: String(state.error || '') }))));
+      }
+      var data = state.data;
+      if (data === null || data === undefined) {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' }, t('quantIdle'))));
+      }
+      if (data.ok === false) {
+        var failWarnings = Array.isArray(data.warnings) ? data.warnings : [];
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+              failWarnings.length > 0 ? failWarnings.join('；') : t('quantNoResult'))));
+      }
+
+      var s = data.stats || {};
+      var tone = function (value) {
+        var n = asNumber(value);
+        if (n === null) return 'flat';
+        return n > 0 ? 'up' : n < 0 ? 'down' : 'flat';
+      };
+      var pct = function (value) {
+        var n = asNumber(value);
+        if (n === null) return '—';
+        return (n > 0 ? '+' : '') + n.toFixed(2) + '%';
+      };
+      var winRate = asNumber(s.winRate);
+
+      var stats = h('div', { className: 'astock-quant-stats' },
+        h(QuantStat, { label: t('quantTotalReturn'), value: pct(s.totalReturn), tone: tone(s.totalReturn) }),
+        h(QuantStat, { label: t('quantAnnual'), value: pct(s.annualReturn), tone: tone(s.annualReturn) }),
+        h(QuantStat, { label: t('quantBenchmark'), value: pct(s.benchmarkReturn), tone: tone(s.benchmarkReturn) }),
+        h(QuantStat, { label: t('quantDrawdown'), value: asNumber(s.maxDrawdown) === null ? '—' : '-' + asNumber(s.maxDrawdown).toFixed(2) + '%', tone: 'down' }),
+        h(QuantStat, { label: t('quantSharpe'), value: asNumber(s.sharpe) === null ? '—' : asNumber(s.sharpe).toFixed(2), tone: tone(s.sharpe) }),
+        h(QuantStat, { label: t('quantWinRate'), value: winRate === null ? '—' : (winRate * 100).toFixed(1) + '%', note: t('quantTrades', { n: s.tradeCount || 0 }) }),
+      );
+
+      var warnings = Array.isArray(data.warnings) ? data.warnings : [];
+      var trades = Array.isArray(data.trades) ? data.trades : [];
+
+      return h('div', null,
+        control,
+        h('section', { className: 'astock-card' },
+          h('div', { className: 'astock-card-head' },
+            h('h3', { className: 'astock-card-title' },
+              (data.name || data.code || '') + '　' + t('quantBacktestTitle')),
+            data.adjusted
+              ? h('span', { className: 'astock-chip', title: t('quantAdjustedTip', { n: data.adjustmentEvents || 0 }) },
+                t('quantAdjustedBadge'))
+              : null),
+          h('p', { className: 'astock-card-note' },
+            t('quantMeta', { strategy: data.strategy, from: data.startDate || '—', to: data.endDate || '—', bars: data.bars || 0 })),
+          stats,
+          h(EquityChart, { t: t, equity: data.equity, benchmark: data.benchmark }),
+          warnings.length > 0
+            ? h('ul', { className: 'astock-quant-warnings' }, warnings.slice(0, 8).map(function (w, i) {
+              return h('li', { key: 'w' + i }, String(w));
+            }))
+            : null,
+          trades.length > 0
+            ? h('details', { className: 'astock-quant-trades' },
+              h('summary', null, t('quantTradeList', { n: trades.length })),
+              h('table', { className: 'astock-quant-table' },
+                h('thead', null, h('tr', null,
+                  h('th', null, t('quantColEntry')),
+                  h('th', null, t('quantColExit')),
+                  h('th', null, t('quantColHold')),
+                  h('th', null, t('quantColPnl')))),
+                h('tbody', null, trades.slice(-30).map(function (tr, i) {
+                  var pnl = asNumber(tr.pnlPercent);
+                  return h('tr', { key: 't' + i },
+                    h('td', null, (tr.entryDate || '—') + ' @ ' + fmtFixed(tr.entryPrice, 2)),
+                    h('td', null, (tr.exitDate || '—') + ' @ ' + fmtFixed(tr.exitPrice, 2)),
+                    h('td', null, String(tr.holdDays === undefined ? '—' : tr.holdDays) + t('quantDaysUnit')),
+                    h('td', { style: { color: pnl === null ? 'inherit' : (pnl > 0 ? 'var(--astock-up)' : 'var(--astock-down)') } },
+                      pnl === null ? '—' : (pnl > 0 ? '+' : '') + pnl.toFixed(2) + '%'));
+                }))))
+            : null,
+          typeof data.disclaimer === 'string'
+            ? h('p', { className: 'astock-disclaimer' }, data.disclaimer)
+            : null));
+    }
+
+    /** 选股扫描视图。 */
+    function QuantScan(props) {
+      var t = props.t;
+      var state = props.state;
+      var onRun = props.onRun;
+      var onOpen = props.onOpen;
+      var onToggleWatch = props.onToggleWatch;
+      var watchKeys = props.watchKeys;
+
+      var control = h('div', { className: 'astock-quant-controls' },
+        uiButton({
+          variant: 'primary',
+          size: 'sm',
+          disabled: state.status === 'loading',
+          onClick: onRun,
+        }, state.status === 'loading' ? t('quantScanning') : t('quantScanRun')));
+
+      if (state.status === 'loading') {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' }, t('quantScanLoading'))));
+      }
+      if (state.status === 'error') {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+              t('quantFailed', { error: String(state.error || '') }))));
+      }
+      var data = state.data;
+      if (data === null || data === undefined) {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' }, t('quantScanIdle'))));
+      }
+
+      var items = Array.isArray(data.items) ? data.items : [];
+      var meta = data.scanMeta || {};
+      var warnings = Array.isArray(data.warnings) ? data.warnings : [];
+
+      if (items.length === 0) {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' },
+              warnings.length > 0 ? warnings.join('；') : t('quantNoResult'))));
+      }
+
+      return h('div', null,
+        control,
+        h('section', { className: 'astock-card' },
+          h('h3', { className: 'astock-card-title' }, t('quantScanTitle')),
+          h('p', { className: 'astock-card-note' },
+            t('quantScanMeta', {
+              universe: meta.universe || 0,
+              passed: meta.prescreened || 0,
+              shortlist: meta.shortlist || 0,
+              ms: meta.totalMs || 0,
+            })),
+          // 把「隐式筛选」摊开：用户必须知道结果不是全市场逐只评分
+          meta.note ? h('p', { className: 'astock-card-note astock-quant-hint' }, String(meta.note)) : null,
+          h('div', { className: 'astock-quant-scan' },
+            items.map(function (item) {
+              var inWatch = watchKeys !== null && watchKeys !== undefined && watchKeys.has(item.secid);
+              return h('div', {
+                key: item.secid,
+                className: 'astock-quant-scan-row',
+                onClick: function () { onOpen(item.code); },
+              },
+                h('span', { className: 'astock-quant-scan-name' },
+                  h('strong', null, item.name || item.code),
+                  h('em', null, item.code)),
+                h('span', { className: 'astock-quant-scan-price' },
+                  fmtFixed(item.price, 2),
+                  h('i', { className: 'astock-change', 'data-tone': trendTone(item.changePercent) }, fmtPercent(item.changePercent))),
+                h('span', { className: 'astock-quant-scan-score' },
+                  h('b', { style: { color: toneColor(scoreTone(item.score)) } }, String(item.score)),
+                  h('em', null, item.verdictLabel || '')),
+                h('button', {
+                  type: 'button',
+                  className: 'astock-mlist-add',
+                  'data-in': inWatch ? 'true' : 'false',
+                  onClick: function (event) {
+                    event.stopPropagation();
+                    onToggleWatch(item, inWatch);
+                  },
+                }, inWatch ? '✓' : '＋'));
+            })),
+          typeof data.disclaimer === 'string'
+            ? h('p', { className: 'astock-disclaimer' }, data.disclaimer)
+            : null));
+    }
+
+    /** 组合回测视图。 */
+    function QuantPortfolio(props) {
+      var t = props.t;
+      var state = props.state;
+      var onRun = props.onRun;
+      var watchCount = props.watchCount;
+
+      var control = h('div', { className: 'astock-quant-controls' },
+        uiButton({
+          variant: 'primary',
+          size: 'sm',
+          disabled: state.status === 'loading' || watchCount === 0,
+          onClick: onRun,
+        }, state.status === 'loading' ? t('quantRunning') : t('quantPortfolioRun')),
+        h('span', { className: 'astock-card-note' }, t('quantPortfolioHint', { n: watchCount })));
+
+      if (state.status === 'loading') {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' }, t('quantLoading'))));
+      }
+      if (state.status === 'error') {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+              t('quantFailed', { error: String(state.error || '') }))));
+      }
+      var data = state.data;
+      if (data === null || data === undefined) {
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note' }, t('quantPortfolioIdle'))));
+      }
+      if (data.ok === false) {
+        var failWarnings = Array.isArray(data.warnings) ? data.warnings : [];
+        return h('div', null, control,
+          h('section', { className: 'astock-card' },
+            h('p', { className: 'astock-card-note', style: { color: 'var(--astock-danger)' } },
+              failWarnings.length > 0 ? failWarnings.join('；') : t('quantNoResult'))));
+      }
+
+      var s = data.stats || {};
+      var pct = function (value) {
+        var n = asNumber(value);
+        if (n === null) return '—';
+        return (n > 0 ? '+' : '') + n.toFixed(2) + '%';
+      };
+      var tone = function (value) {
+        var n = asNumber(value);
+        if (n === null) return 'flat';
+        return n > 0 ? 'up' : n < 0 ? 'down' : 'flat';
+      };
+      var items = Array.isArray(data.items) ? data.items : [];
+      var warnings = Array.isArray(data.warnings) ? data.warnings : [];
+
+      return h('div', null,
+        control,
+        h('section', { className: 'astock-card' },
+          h('h3', { className: 'astock-card-title' }, t('quantPortfolioTitle')),
+          h('p', { className: 'astock-card-note' },
+            t('quantMeta', { strategy: data.strategy || '', from: data.startDate || '—', to: data.endDate || '—', bars: s.days || 0 })),
+          h('div', { className: 'astock-quant-stats' },
+            h(QuantStat, { label: t('quantTotalReturn'), value: pct(s.totalReturn), tone: tone(s.totalReturn) }),
+            h(QuantStat, { label: t('quantAnnual'), value: pct(s.annualReturn), tone: tone(s.annualReturn) }),
+            h(QuantStat, { label: t('quantDrawdown'), value: asNumber(s.maxDrawdown) === null ? '—' : '-' + asNumber(s.maxDrawdown).toFixed(2) + '%', tone: 'down' }),
+            h(QuantStat, { label: t('quantSharpe'), value: asNumber(s.sharpe) === null ? '—' : asNumber(s.sharpe).toFixed(2), tone: tone(s.sharpe) }),
+            h(QuantStat, { label: t('quantMembers'), value: String(s.members || 0) })),
+          h(EquityChart, { t: t, equity: data.equity, benchmark: null }),
+          h('table', { className: 'astock-quant-table' },
+            h('thead', null, h('tr', null,
+              h('th', null, t('quantColName')),
+              h('th', null, t('quantTotalReturn')),
+              h('th', null, t('quantColPnl')),
+              h('th', null, t('quantWinRate')))),
+            h('tbody', null, items.map(function (item, i) {
+              var wr = asNumber(item.winRate);
+              var r = asNumber(item.totalReturn);
+              return h('tr', { key: 'p' + i },
+                h('td', null, (item.name || item.code)),
+                h('td', { style: { color: r === null ? 'inherit' : (r > 0 ? 'var(--astock-up)' : 'var(--astock-down)') } }, pct(item.totalReturn)),
+                h('td', null, String(item.tradeCount === undefined ? '—' : item.tradeCount) + t('quantTradesUnit')),
+                h('td', null, wr === null ? '—' : (wr * 100).toFixed(1) + '%'));
+            }))),
+          warnings.length > 0
+            ? h('ul', { className: 'astock-quant-warnings' }, warnings.map(function (w, i) {
+              return h('li', { key: 'w' + i }, String(w));
+            }))
+            : null,
+          typeof data.disclaimer === 'string'
+            ? h('p', { className: 'astock-disclaimer' }, data.disclaimer)
+            : null));
+    }
+
+    /** 量化 Tab 容器：三个子视图切换。 */
+    function QuantPanel(props) {
+      var t = props.t;
+      var view = props.view;
+      var setView = props.setView;
+      var sub = [
+        { key: 'backtest', label: t('quantSubBacktest') },
+        { key: 'scan', label: t('quantSubScan') },
+        { key: 'portfolio', label: t('quantSubPortfolio') },
+      ];
+      return h('div', { className: 'astock-body astock-body-single' },
+        h('div', { className: 'astock-col' },
+          h('div', { className: 'astock-subtabs', role: 'tablist' },
+            sub.map(function (item) {
+              return h('button', {
+                key: item.key,
+                type: 'button',
+                role: 'tab',
+                className: 'astock-subtab',
+                'data-active': view === item.key ? 'true' : 'false',
+                'aria-selected': view === item.key ? 'true' : 'false',
+                onClick: function () { setView(item.key); },
+              }, item.label);
+            })),
+          view === 'backtest' ? h(QuantBacktest, props.backtest) : null,
+          view === 'scan' ? h(QuantScan, props.scan) : null,
+          view === 'portfolio' ? h(QuantPortfolio, props.portfolio) : null));
+    }
+
     /** 全市场列表：市场切换 + 搜索 + 排序 + 分页 + 快捷加自选。 */
     function MarketList(props) {
       var t = props.t;
@@ -2525,10 +3102,38 @@ window.__ModuleLoader__.load({
       var toast = toastState[0];
       var setToast = toastState[1];
 
-      /* --- 视图切换：个股 / 板块 --- */
-      var tabState = React.useState(MEMO.tab === 'sector' ? 'sector' : 'stock');
+      /* --- 视图切换：个股 / 板块 / 列表 / 量化 --- */
+      var tabState = React.useState(
+        MEMO.tab === 'sector' || MEMO.tab === 'list' || MEMO.tab === 'quant' ? MEMO.tab : 'stock',
+      );
       var tab = tabState[0];
       var setTab = tabState[1];
+
+      /* --- 量化（v5）：三个子视图各自独立的请求状态 --- */
+      var quantViewState = React.useState(MEMO.quantView === 'scan' || MEMO.quantView === 'portfolio' ? MEMO.quantView : 'backtest');
+      var quantView = quantViewState[0];
+      var setQuantView = quantViewState[1];
+
+      var quantBacktestState = React.useState({ status: 'idle', data: null, error: null });
+      var quantBacktest = quantBacktestState[0];
+      var setQuantBacktest = quantBacktestState[1];
+      var quantToken = React.useRef(0);
+
+      var quantStrategyState = React.useState('score-threshold');
+      var quantStrategy = quantStrategyState[0];
+      var setQuantStrategy = quantStrategyState[1];
+
+      var quantDaysState = React.useState(1200);
+      var quantDays = quantDaysState[0];
+      var setQuantDays = quantDaysState[1];
+
+      var quantScanState = React.useState({ status: 'idle', data: null, error: null });
+      var quantScanData = quantScanState[0];
+      var setQuantScanData = quantScanState[1];
+
+      var quantPortfolioState = React.useState({ status: 'idle', data: null, error: null });
+      var quantPortfolioData = quantPortfolioState[0];
+      var setQuantPortfolioData = quantPortfolioState[1];
 
       var sectorState = React.useState(MEMO.sector !== null && MEMO.sector !== undefined
         ? MEMO.sector
@@ -2674,6 +3279,48 @@ window.__ModuleLoader__.load({
         if (sector.status !== 'idle') return;
         loadSectors(sector.boardType, sector.sortBy);
       }, [tab, sector.status, sector.boardType, sector.sortBy, loadSectors]);
+
+      /* --- 量化：单股回测 ---
+       * 用 token 做竞态保护：用户连点「开始回测」或切换标的时，只认最后一次的结果，
+       * 否则先发的慢请求可能覆盖后发的快请求，界面显示成上一个标的的数据。 */
+      var runQuantBacktest = React.useCallback(function (code, strategy, days) {
+        if (typeof code !== 'string' || code.length === 0) return Promise.resolve();
+        var token = ++quantToken.current;
+        setQuantBacktest({ status: 'loading', data: null, error: null });
+        return call('quant/backtest', { code: code, strategy: strategy, days: days })
+          .then(function (value) {
+            if (token !== quantToken.current) return;
+            setQuantBacktest({ status: 'ready', data: value, error: null });
+          })
+          .catch(function (error) {
+            if (token !== quantToken.current) return;
+            setQuantBacktest({ status: 'error', data: null, error: errorMessage(error, t) });
+          });
+      }, [call, t]);
+
+      /* --- 量化：全市场选股扫描 --- */
+      var runQuantScan = React.useCallback(function () {
+        setQuantScanData({ status: 'loading', data: null, error: null });
+        return call('quant/scan', { limit: 30 })
+          .then(function (value) {
+            setQuantScanData({ status: 'ready', data: value, error: null });
+          })
+          .catch(function (error) {
+            setQuantScanData({ status: 'error', data: null, error: errorMessage(error, t) });
+          });
+      }, [call, t]);
+
+      /* --- 量化：组合回测（用自选股） --- */
+      var runQuantPortfolio = React.useCallback(function () {
+        setQuantPortfolioData({ status: 'loading', data: null, error: null });
+        return call('quant/portfolio', { strategy: 'score-threshold', days: 1200 })
+          .then(function (value) {
+            setQuantPortfolioData({ status: 'ready', data: value, error: null });
+          })
+          .catch(function (error) {
+            setQuantPortfolioData({ status: 'error', data: null, error: errorMessage(error, t) });
+          });
+      }, [call, t]);
 
       /* --- 公司资料与公告（进入详情页时自动拉取） --- */
       var loadDetailInfo = React.useCallback(function (code) {
@@ -3155,6 +3802,19 @@ window.__ModuleLoader__.load({
       var evaluation = view.data;
       var ready = view.status === 'ready' && evaluation !== null && evaluation !== undefined;
       var activeKey = currentKey();
+
+      /* 量化选股结果里的「是否已加自选」判定集合。
+       * 用裸代码做 key，与 existing 自选股列表的比对口径保持一致（bareCode）。 */
+      var quantWatchKeys = (function () {
+        var set = new Set();
+        var codes = Array.isArray(watch.codes) ? watch.codes : [];
+        for (var i = 0; i < codes.length; i += 1) {
+          var key = bareCode(codes[i]);
+          if (key.length > 0) set.add(key);
+        }
+        return set;
+      })();
+
       var inWatchlist = activeKey.length > 0 && (Array.isArray(watch.codes) ? watch.codes : []).some(function (item) {
         return bareCode(item) === activeKey;
       });
@@ -3449,10 +4109,54 @@ window.__ModuleLoader__.load({
             onClick: function () {
               setTab('list');
             },
-          }, t('tabList'))),
+          }, t('tabList')),
+          h('button', {
+            type: 'button',
+            role: 'tab',
+            className: 'astock-tab',
+            'data-active': tab === 'quant' ? 'true' : 'false',
+            'aria-selected': tab === 'quant' ? 'true' : 'false',
+            onClick: function () {
+              setTab('quant');
+            },
+          }, t('tabQuant'))),
         h(IndicesBar, { t: t, state: indices }),
         tab === 'sector' ? sectorView : null,
         tab === 'list' ? listView : null,
+        tab === 'quant' ? h(QuantPanel, {
+          t: t,
+          view: quantView,
+          setView: setQuantView,
+          backtest: {
+            t: t,
+            state: quantBacktest,
+            strategy: quantStrategy,
+            days: quantDays,
+            onStrategy: setQuantStrategy,
+            onDays: setQuantDays,
+            onRun: function () {
+              runQuantBacktest(target.code, quantStrategy, quantDays);
+            },
+          },
+          scan: {
+            t: t,
+            state: quantScanData,
+            onRun: runQuantScan,
+            onOpen: function (code) {
+              // 点选结果直接跳到个股页，与列表 tab 的手感保持一致
+              setTab('stock');
+              runEvaluate(code, null);
+            },
+            onToggleWatch: toggleWatchOnItem,
+            watchKeys: quantWatchKeys,
+          },
+          portfolio: {
+            t: t,
+            state: quantPortfolioData,
+            onRun: runQuantPortfolio,
+            watchCount: Array.isArray(watch.codes) ? watch.codes.length : 0,
+          },
+        }) : null,
         tab === 'stock' ? h('div', null, h(SearchBar, {
           t: t,
           keyword: search.keyword,
