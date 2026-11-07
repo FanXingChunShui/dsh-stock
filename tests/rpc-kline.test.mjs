@@ -118,3 +118,67 @@ test('interpret 端点：返回解读结构且措辞完整', async (t) => {
     assert.ok(!joined.includes(banned), `解读不应包含断言式措辞：${banned}`);
   }
 });
+
+/* ════════════════════════════════════════════════════════════════
+ * 时间范围：1天/7天/30天走分钟线，长周期走日线
+ * ════════════════════════════════════════════════════════════════ */
+
+test('kline 端点：A 股短周期走分钟线', async (t) => {
+  const rpc = makeRpc();
+  const cases = [
+    { range: '1d', expectGran: '5min' },
+    { range: '7d', expectGran: '30min' },
+    { range: '30d', expectGran: '60min' },
+  ];
+  for (const c of cases) {
+    const res = await rpc('kline', { code: '600519', range: c.range }, new AbortController().signal);
+    if (!res.ok) {
+      t.skip(`网络不可用：${res.error.message}`);
+      return;
+    }
+    const v = res.value;
+    assert.equal(v.range, c.range);
+    assert.equal(v.granularity, c.expectGran, `${c.range} 应为 ${c.expectGran}`);
+    assert.ok(v.count > 0);
+    // 分钟线每条必须有 time 字段且含时分
+    assert.match(String(v.bars[0].time), /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+      '分钟线的 time 应含完整时分秒');
+  }
+});
+
+test('kline 端点：长周期走日线且不含时分', async (t) => {
+  const rpc = makeRpc();
+  for (const range of ['60d', '120d', '250d']) {
+    const res = await rpc('kline', { code: '600519', range }, new AbortController().signal);
+    if (!res.ok) {
+      t.skip(`网络不可用：${res.error.message}`);
+      return;
+    }
+    const v = res.value;
+    assert.equal(v.granularity, 'day', `${range} 应为日线`);
+    assert.match(String(v.bars[0].date), /^\d{4}-\d{2}-\d{2}$/);
+  }
+});
+
+test('kline 端点：港美股回落日线（无分钟线源）', async (t) => {
+  const rpc = makeRpc();
+  for (const code of ['hk00700', 'usAAPL']) {
+    const res = await rpc('kline', { code, range: '1d' }, new AbortController().signal);
+    if (!res.ok) {
+      t.skip(`网络不可用：${res.error.message}`);
+      return;
+    }
+    assert.equal(res.value.granularity, 'day', `${code} 没有分钟线源，应回落日线`);
+  }
+});
+
+test('kline 端点：未知 range 回落到 120 日线', async (t) => {
+  const rpc = makeRpc();
+  const res = await rpc('kline', { code: '600519', range: 'bogus' }, new AbortController().signal);
+  if (!res.ok) {
+    t.skip(`网络不可用：${res.error.message}`);
+    return;
+  }
+  assert.equal(res.value.range, '120d');
+  assert.equal(res.value.granularity, 'day');
+});

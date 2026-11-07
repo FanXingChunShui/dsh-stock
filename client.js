@@ -148,9 +148,14 @@ window.__ModuleLoader__.load({
       klineFailed: 'Could not load candles: {error}',
       klineEmpty: 'No candle data',
       klineDays: '{count} sessions',
-      klineRange60: '60D',
-      klineRange120: '120D',
-      klineRange250: '250D',
+      klineRange1d: '1D',
+      klineRange7d: '7D',
+      klineRange30d: '30D',
+      klineRange60d: '60D',
+      klineRange120d: '120D',
+      klineRange250d: '250D',
+      klineGranMinute: '{scale}min',
+      klineGranDay: 'Daily',
       klineOpen: 'O',
       klineHigh: 'H',
       klineLow: 'L',
@@ -360,9 +365,14 @@ window.__ModuleLoader__.load({
       klineFailed: '加载 K 线失败：{error}',
       klineEmpty: '暂无 K 线数据',
       klineDays: '{count} 个交易日',
-      klineRange60: '近 60 日',
-      klineRange120: '近 120 日',
-      klineRange250: '近 250 日',
+      klineRange1d: '1天',
+      klineRange7d: '7天',
+      klineRange30d: '30天',
+      klineRange60d: '60天',
+      klineRange120d: '120天',
+      klineRange250d: '250天',
+      klineGranMinute: '{scale}分钟',
+      klineGranDay: '日线',
       klineOpen: '开',
       klineHigh: '高',
       klineLow: '低',
@@ -1758,6 +1768,7 @@ window.__ModuleLoader__.load({
           h('p', { className: 'astock-card-note' }, t('klineLoading')));
       }
       var bars = Array.isArray(data.bars) ? data.bars : [];
+      var isMinute = typeof data.granularity === 'string' && data.granularity.endsWith('min');
       if (bars.length === 0) {
         return h('section', { className: 'astock-card' },
           h('h3', { className: 'astock-card-title' }, t('klineTitle')),
@@ -1890,13 +1901,15 @@ window.__ModuleLoader__.load({
         dateLabels.push(h('text', {
           key: 'd' + dl, x: xOf(idx), y: H - 2, fontSize: 9.5,
           fill: 'var(--astock-text-3)', textAnchor: dl === 0 ? 'start' : dl === labelCount - 1 ? 'end' : 'middle',
-        }, String(bars[idx].date).slice(5)));
+        }, isMinute
+          ? String(bars[idx].time || bars[idx].date).slice(11, 16)
+          : String(bars[idx].date).slice(5)));
       }
 
       /* ── hover 详情 ── */
       var hoverBar = hover !== null && hover !== undefined ? bars[hover] : bars[n - 1];
       var tip = hoverBar
-        ? `${hoverBar.date}　${t('klineOpen')} ${fmtFixed(hoverBar.open, 2)}　`
+        ? `${hoverBar.time || hoverBar.date}　${t('klineOpen')} ${fmtFixed(hoverBar.open, 2)}　`
           + `${t('klineHigh')} ${fmtFixed(hoverBar.high, 2)}　`
           + `${t('klineLow')} ${fmtFixed(hoverBar.low, 2)}　`
           + `${t('klineClose')} ${fmtFixed(hoverBar.close, 2)}　`
@@ -1907,17 +1920,24 @@ window.__ModuleLoader__.load({
         h('div', { className: 'astock-card-head' },
           h('div', null,
             h('h3', { className: 'astock-card-title' }, t('klineTitle')),
-            h('p', { className: 'astock-card-note' }, t('klineDays', { count: n }))),
+            h('p', { className: 'astock-card-note' },
+              (data.granularity === 'day'
+                ? t('klineGranDay')
+                : t('klineGranMinute', { scale: String(data.granularity || '').replace('min', '') }))
+              + ' · ' + t('klineDays', { count: n }))),
           h('div', { className: 'astock-seg' }, [
-            { days: 60, label: t('klineRange60') },
-            { days: 120, label: t('klineRange120') },
-            { days: 250, label: t('klineRange250') },
+            { key: '1d', label: t('klineRange1d') },
+            { key: '7d', label: t('klineRange7d') },
+            { key: '30d', label: t('klineRange30d') },
+            { key: '60d', label: t('klineRange60d') },
+            { key: '120d', label: t('klineRange120d') },
+            { key: '250d', label: t('klineRange250d') },
           ].map(function (opt) {
             return h('button', {
-              key: 'r' + opt.days,
+              key: 'r' + opt.key,
               type: 'button',
-              'data-active': n <= opt.days + 20 ? 'true' : 'false',
-              onClick: function () { props.onRange(opt.days); },
+              'data-active': (data.range || '120d') === opt.key ? 'true' : 'false',
+              onClick: function () { props.onRange(opt.key); },
             }, opt.label);
           }))),
         h('div', { className: 'astock-kline-wrap' },
@@ -2494,7 +2514,7 @@ window.__ModuleLoader__.load({
       var kline = klineState[0];
       var setKline = klineState[1];
       var klineToken = React.useRef(0);
-      var klineDays = React.useRef(120);
+      var klineRange = React.useRef('120d');
 
       var readingState = React.useState({ status: 'idle', reading: null, error: null });
       var reading = readingState[0];
@@ -2705,16 +2725,16 @@ window.__ModuleLoader__.load({
       }, [call, t]);
 
       /* --- K 线 --- */
-      var loadKline = React.useCallback(function (code, days) {
+      var loadKline = React.useCallback(function (code, range) {
         if (typeof code !== 'string' || code.length === 0) return Promise.resolve();
-        var want = Number(days) || klineDays.current || 120;
-        klineDays.current = want;
+        var want = typeof range === 'string' && range.length > 0 ? range : (klineRange.current || '120d');
+        klineRange.current = want;
         var token = ++klineToken.current;
         setKline(function (current) {
           return { status: current.code === code && current.data !== null ? current.status : 'loading',
             data: current.code === code ? current.data : null, error: null, code: code };
         });
-        return call('kline', { code: code, days: want }).then(function (value) {
+        return call('kline', { code: code, range: want }).then(function (value) {
           if (token !== klineToken.current) return;
           setKline({ status: 'ready', data: value, error: null, code: code });
         }).catch(function (error) {
@@ -2912,7 +2932,7 @@ window.__ModuleLoader__.load({
         // 公司资料与公告独立加载：失败不影响技术面评分
         loadDetailInfo(code);
         // K 线独立加载
-        loadKline(code, klineDays.current);
+        loadKline(code, klineRange.current);
 
         var evalTask = call('evaluate', { code: code }).then(function (value) {
           if (token !== evalToken.current) return null;
@@ -3207,8 +3227,8 @@ window.__ModuleLoader__.load({
             t: t,
             state: kline,
             data: kline.data,
-            onRange: function (days) {
-              loadKline(target.code, days);
+            onRange: function (range) {
+              loadKline(target.code, range);
             },
           }),
           reading.status === 'loading'

@@ -21,6 +21,8 @@ import {
   parseKlineResponse,
   parseSinaKlineResponse,
   parseSinaUsKlineResponse,
+  parseSinaTimedKlineResponse,
+  fetchMinuteBars,
   parseSuggestResponse,
 } from '../lib/quote.js';
 
@@ -617,4 +619,60 @@ test('parseSinaUsKlineResponse: 非法输入返回空数组', () => {
   assert.deepEqual(parseSinaUsKlineResponse('bad'), []);
   assert.deepEqual(parseSinaUsKlineResponse('null'), []);
   assert.deepEqual(parseSinaUsKlineResponse('[]'), []);
+});
+
+/* ════════════════════════════════════════════════════════════════
+ * 分钟线（fetchMinuteBars / parseSinaTimedKlineResponse）
+ * ════════════════════════════════════════════════════════════════ */
+
+test('parseSinaTimedKlineResponse: 保留完整时间戳', () => {
+  const raw = JSON.stringify([
+    { day: '2026-11-06 14:15:00', open: '1448.10', high: '1449.00', low: '1446.10', close: '1448.36', volume: '52900' },
+    { day: '2026-11-06 14:10:00', open: '1447.00', high: '1448.50', low: '1445.00', close: '1448.10', volume: '40000' },
+  ]);
+  const bars = parseSinaTimedKlineResponse(raw);
+  assert.equal(bars.length, 2);
+  // 必须按时间升序
+  assert.equal(bars[0].time, '2026-11-06 14:10:00');
+  assert.equal(bars[1].time, '2026-11-06 14:15:00');
+  // date 是 time 的日期部分
+  assert.equal(bars[0].date, '2026-11-06');
+  assert.equal(bars[1].open, 1448.1);
+  assert.equal(bars[1].close, 1448.36);
+});
+
+test('parseSinaTimedKlineResponse: 非法输入返回空数组', () => {
+  assert.deepEqual(parseSinaTimedKlineResponse(''), []);
+  assert.deepEqual(parseSinaTimedKlineResponse('bad'), []);
+  assert.deepEqual(parseSinaTimedKlineResponse('[]'), []);
+});
+
+test('fetchMinuteBars: 港美股返回空数组（无分钟线源）', async () => {
+  assert.deepEqual(await fetchMinuteBars('hk00700', { scale: 5 }), []);
+  assert.deepEqual(await fetchMinuteBars('usAAPL', { scale: 5 }), []);
+});
+
+test('fetchMinuteBars: 非法代码抛错', async () => {
+  await assert.rejects(() => fetchMinuteBars('zzz'), /非法股票代码/);
+});
+
+test('联网：fetchMinuteBars 取 A 股 5 分钟线', async (t) => {
+  let bars;
+  try {
+    bars = await fetchMinuteBars('sh600519', { scale: 5, limit: 48, noCache: true });
+  } catch (error) {
+    t.skip(`网络不可用：${error.message}`);
+    return;
+  }
+  if (bars.length === 0) {
+    t.skip('分钟线接口返回空（可能被限流）');
+    return;
+  }
+  assert.ok(bars.length > 0);
+  // 时间戳必须含时分
+  assert.match(bars[0].time, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+  // 升序
+  for (let i = 1; i < Math.min(bars.length, 10); i += 1) {
+    assert.ok(bars[i - 1].time <= bars[i].time, '时间必须升序');
+  }
 });
