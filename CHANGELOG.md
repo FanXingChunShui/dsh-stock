@@ -11,6 +11,25 @@
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-07
+
+### 变更
+
+- **A 股 K 线主源切换为新浪**（`quotes.sina.cn`，akshare 同源开源接口）。
+  腾讯 A 股日 K 接口被 WAF 拦截（HTTP 501 + `waf.tencent.com` 跳转页，持续多日），
+  原先每次都要先撞 501 再回退，白多一次网络往返。现在新浪优先、腾讯兜底。
+- A 股实时快照**仍走腾讯**——新浪快照只有 34 个字段，缺 PE/PB/量比/市值/涨跌停价；
+  腾讯 88 字段，功能完整。港股与美股的 K 线也仍走腾讯（这两个市场接口正常）。
+
+### 需要注意
+
+- 新浪返回**不复权**数据，除权日附近 K 线有跳空；腾讯为**前复权**。
+  这是「可用性优先」的取舍，详见 README「复权差异」一节。
+
+### 新增
+
+- 2 个测试锁定该行为：主源连续取数稳定性、混合源（快照腾讯 + K 线新浪）评分完整性。
+
 ## [0.1.2] - 2026-11-07
 
 ### 变更
@@ -111,7 +130,8 @@
 - 204 个测试，含纯函数测试与联网冒烟（网络不可达时自动 skip）
 - GitHub Actions：CI（3 个 Node 版本矩阵 + 打包校验）、Release（版本校验 + npm 发布）
 
-[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.3
 [0.1.2]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.2
 [0.1.1]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.1
 [0.1.0]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.0

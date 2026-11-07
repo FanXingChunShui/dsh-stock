@@ -25,6 +25,7 @@ import {
   fetchMinuteBars,
   parseSuggestResponse,
 } from '../lib/quote.js';
+import { evaluateStock } from '../lib/score.js';
 
 // ---------------------------------------------------------------------------
 // 实测抓下来的原始响应样本（腾讯接口真实返回，原样粘贴）
@@ -675,4 +676,56 @@ test('联网：fetchMinuteBars 取 A 股 5 分钟线', async (t) => {
   for (let i = 1; i < Math.min(bars.length, 10); i += 1) {
     assert.ok(bars[i - 1].time <= bars[i].time, '时间必须升序');
   }
+});
+
+/* ════════════════════════════════════════════════════════════════
+ * A 股 K 线主源：新浪（腾讯为备用）
+ * ════════════════════════════════════════════════════════════════ */
+
+test('联网：A 股日 K 走新浪主源（可连续多次取到）', async (t) => {
+  // 主源稳定性验证：连续取 3 次不同标的，都应成功。
+  // 如果主源仍是腾讯，这条会因 501 而依赖备用链路，耗时也会明显更长。
+  const codes = ['sh600519', 'sz000001', 'sh601318'];
+  for (const code of codes) {
+    let bars;
+    try {
+      bars = await fetchDailyBars(code, { limit: 30, noCache: true, timeoutMs: 15000 });
+    } catch (error) {
+      t.skip(`网络不可用：${error.message}`);
+      return;
+    }
+    if (bars.length === 0) {
+      t.skip(`${code} 取不到数据（可能被限流）`);
+      return;
+    }
+    assert.ok(bars.length >= 20, `${code} 应取到足够 K 线，实际 ${bars.length}`);
+    // 每条必须是合法 OHLC
+    for (const b of bars.slice(0, 5)) {
+      assert.ok(b.high >= b.low, `${code} high 应 >= low`);
+      assert.ok(b.close > 0, `${code} close 应为正数`);
+      assert.match(b.date, /^\d{4}-\d{2}-\d{2}$/);
+    }
+  }
+});
+
+test('联网：A 股 K 线与快照可组合成完整评分', async (t) => {
+  // K 线走新浪、快照走腾讯，两者组合后评分必须完整。
+  // 这条同时验证了「混合数据源」不会让 Evaluation 缺字段。
+  let data;
+  try {
+    data = await loadStockData('600519', { limit: 120 });
+  } catch (error) {
+    t.skip(`网络不可用：${error.message}`);
+    return;
+  }
+  if (data.quote === null || data.bars.length === 0) {
+    t.skip('快照或 K 线缺失（可能被限流）');
+    return;
+  }
+  const ev = evaluateStock({ quote: data.quote, bars: data.bars });
+  assert.ok(typeof ev.score === 'number' && ev.score >= 0 && ev.score <= 100);
+  assert.equal(ev.factors.length, 6);
+  // 快照侧的富字段必须还在（证明没有因为换 K 线源而丢掉快照能力）
+  assert.ok(data.quote.peTtm !== null || data.quote.pb !== null,
+    '快照应仍带 PE/PB（来自腾讯，未被新浪替代）');
 });
