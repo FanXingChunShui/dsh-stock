@@ -11,6 +11,35 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-07
+
+### 修复
+
+- **CI 打包校验假失败**：`npm pack` 的文件清单按列宽动态对齐，用
+  `grep " $file "` 做文本断言匹配不上多空格。改用
+  `scripts/verify-pack.mjs`（`npm pack --dry-run --json` 结构化校验）。
+- **publish 假成功**：`npm publish | tee` 的退出码是 tee 的，失败会被伪装成成功，
+  导致「Release 全绿但 npm 上没有包」。加 `set -o pipefail` 并新增
+  registry 上线校验。
+
+### 变更
+
+- **改用 npm Trusted Publishing (OIDC)**，不再依赖任何长期 token：
+  - 移除 `NPM_TOKEN` 及凭证校验步骤
+  - 移除 `setup-node` 的 `registry-url`（它会写空 token 到 .npmrc 导致 ENEEDAUTH）
+  - 新增 npm 升级步骤（OIDC 需 npm ≥ 11.5.1，Node 自带的是 10.x）
+- 包名改为 `dsh-stock-surf`（`dsh-astock` / `dsh-stock` 已被占用）
+
+### 新增
+
+- **K 线模块**：纯 SVG 蜡烛图，含均线与成交量副图，鼠标悬停显示 OHLCV。零图表库依赖。
+- **六档时间范围**：1天 / 7天 / 30天 / 60天 / 120天 / 250天。
+  其中 1 天用 5 分钟线（48 根）、7 天用 30 分钟线（70 根）、30 天用 60 分钟线（120 根），
+  更长的范围走日线。分钟线只有 A 股有免费源，港美股自动回落日线。
+- **一键解读**：把 K 线与技术指标翻译成中文结论——区间表现、均线结构、
+  RSI 区间、MACD 状态、量能变化，并单列「需要留意」的风险点。
+  规则化文案，不做涨跌预测。
+
 ### 新增
 
 - **K 线模块**：纯 SVG 蜡烛图，含均线与成交量副图，鼠标悬停显示 OHLCV。零图表库依赖。
@@ -63,5 +92,6 @@
 - 204 个测试，含纯函数测试与联网冒烟（网络不可达时自动 skip）
 - GitHub Actions：CI（3 个 Node 版本矩阵 + 打包校验）、Release（版本校验 + npm 发布）
 
-[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.1
 [0.1.0]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.0

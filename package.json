@@ -1,6 +1,6 @@
 {
   "name": "dsh-stock-surf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "股票冲浪：A股/港股/美股行情与涨跌评估插件，多因子技术评分 + 板块与个股列表，提供 Web 面板与 Agent 工具",
   "type": "module",
