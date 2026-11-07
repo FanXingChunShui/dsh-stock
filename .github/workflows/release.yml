@@ -152,20 +152,35 @@ jobs:
 
       # 发布后再向 registry 查一次，确认包真的上线了。
       # 这是对「步骤成功 ≠ 发布成功」的兜底验证。
+      #
+      # ⚠️ 这一步在 v0.2.0 曾经误报失败：npm 发布其实成功了（registry 上能查到），
+      # 但包刚发布时 CDN 节点还没同步，12 次 × 10 秒全部拿到 404。
+      # 之后改成本地视角 + 缓存穿透双通道查询：
+      #   - npm view 走 npm CLI 自己的解析与重试逻辑
+      #   - curl 带 Cache-Control: no-cache 强制穿透 CDN 缓存
+      # 任一成功即视为已上线。总等待时间也放宽到 5 分钟。
       - name: Confirm package is live on npm
         shell: bash
         run: |
           set -e
           NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
-          echo "查询 https://registry.npmjs.org/$NAME/$VERSION …"
-          for i in $(seq 1 12); do
-            CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/$NAME/$VERSION")
-            if [ "$CODE" = "200" ]; then
-              echo "✓ $NAME@$VERSION 已在 npm registry 上线"
+          echo "校验 $NAME@$VERSION 是否已上线 npm …"
+          for i in $(seq 1 30); do
+            # 通道 1：npm CLI（自带重试与 registry 配置）
+            if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+              echo "✓ $NAME@$VERSION 已上线（npm view 确认）"
               exit 0
             fi
-            echo "  第 $i 次查询返回 $CODE，10 秒后重试（registry 有传播延迟）"
+            # 通道 2：直接查 registry，带 no-cache 绕过 CDN
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
+              "https://registry.npmjs.org/$NAME/$VERSION?t=$(date +%s)")
+            if [ "$CODE" = "200" ]; then
+              echo "✓ $NAME@$VERSION 已上线（registry 直接确认）"
+              exit 0
+            fi
+            echo "  第 $i 次：npm view 未命中，registry 返回 $CODE，10 秒后重试"
             sleep 10
           done
           echo "::error::$NAME@$VERSION 在 npm registry 上查不到，发布可能未真正生效"
@@ -184,7 +199,14 @@ jobs:
     name: Create GitHub Release
     needs: [preflight, publish-npm]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    # 只要 preflight 通过就建 Release，不因为 npm 侧的校验失败而连带跳过。
+    # 理由：Release 的价值在于把 tag 与构建产物留档，与 npm 是否可见是两件事。
+    # v0.2.0 就是因为 publish-npm 的 CDN 误报失败，导致 Release 被 skip，
+    # 而 npm 其实已经发布成功——两个产物只到了一个。
+    if: |
+      always() && github.event_name == 'push'
+      && needs.preflight.result == 'success'
+      && needs.publish-npm.result != 'cancelled'
     steps:
       - uses: actions/checkout@v4
         with:
