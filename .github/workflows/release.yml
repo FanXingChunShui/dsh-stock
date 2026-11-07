@@ -83,6 +83,10 @@ jobs:
       - name: Verify exports
         run: npm run verify:exports
 
+      # 发布前就校验打包内容，避免把残缺包推上 npm（npm 不允许覆盖已发布版本）
+      - name: Verify package contents
+        run: npm run verify:pack
+
       - name: Full test suite
         run: npm test
 
@@ -108,9 +112,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-
-      - name: Show what will be published
-        run: npm pack --dry-run
 
       # provenance 会附带 SLSA 来源证明，但要求仓库是**公开**的。
       # 私有仓库 + --provenance 会直接报错，所以用变量控制：

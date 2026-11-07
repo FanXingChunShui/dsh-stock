@@ -22,7 +22,8 @@
     "CONTRACT.md",
     "DATA-SOURCES.md",
     "CHANGELOG.md",
-    "RELEASING.md"
+    "RELEASING.md",
+    "scripts/*.mjs"
   ],
   "dsh": {
     "bundle": {
@@ -57,7 +58,7 @@
     "lint:syntax": "node --check index.js && node --check client.js && node --check lib/config.js && node --check lib/quote.js && node --check lib/rpc.js && node --check lib/score.js && node --check lib/sector.js && node --check lib/sector-score.js && node --check lib/stock-detail.js && node --check lib/stock-list.js && node --check lib/tools.js && node --check lib/watchlist.js",
     "verify:json": "node -e \"for (const f of ['package.json','locale/zh.json','locale/en.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON OK')\"",
     "verify:exports": "node -e \"import('./index.js').then(m => { if (typeof m.apply !== 'function') throw new Error('apply 缺失'); if (typeof m.Config === 'undefined') throw new Error('Config 缺失'); console.log('exports OK'); })\"",
-    "verify:pack": "npm pack --dry-run",
+    "verify:pack": "node scripts/verify-pack.mjs",
     "prepublishOnly": "npm run lint:syntax && npm run verify:json && npm run test"
   },
   "engines": {

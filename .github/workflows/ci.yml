@@ -94,45 +94,26 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      # ⚠️ npm pack 的文件清单走 stderr，必须 2>&1 才能被 tee 捕获；
-      # 只写 `> file` 会得到空文件，导致后面的断言全部误报「缺失」。
-      - name: Pack and inspect
+      # 用结构化校验脚本代替 grep 文本断言。
+      #
+      # 早先的写法是 `grep -q " $f " pack-output.txt`，在 CI 上必然失败：
+      # npm pack 的文件清单按列宽动态对齐，文件名后面补若干空格，
+      # 例如 `npm notice 8.8kB   index.js           `。
+      # 单空格包裹匹配不上多空格，而列宽取决于最长文件名的长度——
+      # 一旦新增长文件名，断言就会全红。
+      #
+      # scripts/verify-pack.mjs 改用 `npm pack --dry-run --json` 拿结构化
+      # 文件列表，同时校验 package.json 自洽性（private / files / dsh 入口）。
+      - name: Verify package contents
+        run: node scripts/verify-pack.mjs
+
+      - name: Pack summary
+        if: always()
         run: |
-          npm pack --dry-run 2>&1 | tee pack-output.txt
           echo "### 打包内容" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -E 'npm notice [0-9]' pack-output.txt >> $GITHUB_STEP_SUMMARY || true
+          npm pack --dry-run 2>&1 | grep -E 'npm notice [0-9]' >> $GITHUB_STEP_SUMMARY || true
           echo '```' >> $GITHUB_STEP_SUMMARY
-
-      # 断言关键文件都在包里，避免 files 字段写漏导致发布残缺包
-      - name: Assert required files are packaged
-        run: |
-          set -e
-          if [ ! -s pack-output.txt ]; then
-            echo "❌ pack-output.txt 为空：npm pack 输出未被捕获"
-            exit 1
-          fi
-          for f in index.js client.js cordis.patch.yml icon.svg package.json \
-                   locale/zh.json locale/en.json lib/quote.js lib/score.js \
-                   lib/rpc.js lib/tools.js; do
-            if ! grep -q " $f " pack-output.txt; then
-              echo "❌ 缺失文件：$f"
-              exit 1
-            fi
-            echo "✓ $f"
-          done
-
-      # 反向断言：node_modules 与测试文件不应进包
-      - name: Assert excluded files are absent
-        run: |
-          set -e
-          for f in node_modules tests/ .github/; do
-            if grep -q "$f" pack-output.txt; then
-              echo "❌ 不应打包的文件出现在包里：$f"
-              exit 1
-            fi
-            echo "✓ 已排除 $f"
-          done
 
   # ── 4. 全绿才允许后续发布（release.yml 复用此结论） ────────────────────
   ci-success:

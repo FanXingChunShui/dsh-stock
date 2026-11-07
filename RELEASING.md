@@ -84,6 +84,7 @@ git push && git push --tags
 | `npm publish` 报 403 `cannot publish over` | 该版本号已存在 | npm 不允许覆盖，必须升版本号 |
 | `ENEEDAUTH` | 未配置 `registry-url` 或 token 未注入 | 检查 workflow 的 `setup-node` 参数 |
 | 联网测试失败 | GitHub runner 访问国内接口不稳定 | 测试自带 `isOnline()` 探测并 skip，正常不会红；若真红了说明代码 bug |
+| `Assert required files are packaged` 失败 | 曾用 `grep " $file "` 做文本断言，但 `npm pack` 的文件清单按列宽动态对齐，文件名后补多空格 | 已改用 `scripts/verify-pack.mjs`（走 `npm pack --dry-run --json` 拿结构化列表）。若仍失败，看日志里具体哪个文件缺失，检查 `package.json` 的 `files` 字段 |
 
 ## 本地安装验证
 
