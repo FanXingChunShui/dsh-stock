@@ -149,7 +149,13 @@ jobs:
       # 私有仓库 + --provenance 会直接报错，所以用变量控制：
       # 公开仓库保持开启（默认），私有仓库把仓库变量 ENABLE_PROVENANCE 设为 false。
       - name: Publish
+        shell: bash
         run: |
+          # ⚠️ 必须开 pipefail。
+          # `npm publish ... | tee publish.log` 的退出码是 **tee 的**，不是 npm 的：
+          # tee 成功写入就返回 0，于是 npm publish 失败时步骤照样显示 success，
+          # 结果就是「Release 绿了但 npm 上根本没有这个包」。
+          set -o pipefail
           if [ "${{ vars.ENABLE_PROVENANCE }}" = "false" ]; then
             echo "provenance 已关闭，普通发布"
             npm publish --access public 2>&1 | tee publish.log
@@ -170,6 +176,27 @@ jobs:
           echo "```" >> $GITHUB_STEP_SUMMARY
           if [ -f publish.log ]; then tail -40 publish.log >> $GITHUB_STEP_SUMMARY; fi
           echo "```" >> $GITHUB_STEP_SUMMARY
+
+      # 发布后再向 registry 查一次，确认包真的上线了。
+      # 这是对「步骤成功 ≠ 发布成功」的兜底验证。
+      - name: Confirm package is live on npm
+        shell: bash
+        run: |
+          set -e
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          echo "查询 https://registry.npmjs.org/$NAME/$VERSION …"
+          for i in $(seq 1 12); do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/$NAME/$VERSION")
+            if [ "$CODE" = "200" ]; then
+              echo "✓ $NAME@$VERSION 已在 npm registry 上线"
+              exit 0
+            fi
+            echo "  第 $i 次查询返回 $CODE，10 秒后重试（registry 有传播延迟）"
+            sleep 10
+          done
+          echo "::error::$NAME@$VERSION 在 npm registry 上查不到，发布可能未真正生效"
+          exit 1
 
       - name: Publish summary
         run: |
