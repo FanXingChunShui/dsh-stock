@@ -127,21 +127,52 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # 用 token 直接问 npm「我是谁」，这是最直接的凭证有效性验证：
-      #   - 401/403 → token 无效、过期，或没有该包的发布权限
-      #   - 200     → token 有效
+      # 验证 token 能否通过 registry 认证。
+      #
+      # 注意：`npm whoami` 对 token 权限要求偏高——Granular Access Token
+      # 即使能发布，也可能因为缺少 "Read user" 权限而 whoami 失败。
+      # 所以这里改成直接问 registry「这个 token 是谁」：
+      # 只要能拿到用户名就说明 token 有效且可用于发布。
       - name: Verify npm credentials
+        shell: bash
         run: |
           set +e
-          RESP=$(npm whoami 2>&1)
-          CODE=$?
+          # 方式一：npm whoami（最权威，但 Granular token 可能不支持）
+          WHOAMI=$(npm whoami 2>&1)
+          WHOAMI_CODE=$?
+          # 方式二：直接打 registry 的 whoami 接口，用 token 做 Bearer
+          HTTP=$(curl -s -o /tmp/whoami.json -w '%{http_code}' \
+            -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+            https://registry.npmjs.org/-/whoami)
           set -e
-          if [ $CODE -ne 0 ]; then
-            echo "::error::npm whoami 失败（退出码 $CODE）：$RESP"
-            echo "常见原因：token 无效/过期、token 是只读类型、或账号未验证邮箱"
-            exit 1
+
+          echo "npm whoami 退出码: $WHOAMI_CODE"
+          echo "registry /-/whoami HTTP: $HTTP"
+
+          if [ $WHOAMI_CODE -eq 0 ]; then
+            echo "✓ npm 身份：$WHOAMI"
+            exit 0
           fi
-          echo "✓ npm 身份：$RESP"
+
+          # whoami 失败时看 registry 直接调用是否成功
+          if [ "$HTTP" = "200" ]; then
+            echo "✓ registry 认证通过（npm whoami 因权限模型不适用，忽略）"
+            cat /tmp/whoami.json
+            exit 0
+          fi
+
+          # 两条路都失败，才判定凭证无效，并打印可读原因
+          echo "::error::npm 凭证无效"
+          echo "--- npm whoami 输出 ---"
+          echo "$WHOAMI"
+          echo "--- registry 响应（HTTP $HTTP）---"
+          cat /tmp/whoami.json 2>/dev/null || true
+          echo "--- 排查清单 ---"
+          echo "1. token 是否已过期或被撤销（npmjs.com → Access Tokens）"
+          echo "2. token 类型：Automation 最佳；Granular 需勾 Read and write + 选中该包"
+          echo "3. 复制时是否带了空格/换行"
+          echo "4. 该 npm 账号是否已验证邮箱"
+          exit 1
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
