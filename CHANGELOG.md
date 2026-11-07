@@ -11,6 +11,25 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-07
+
+### 变更
+
+- **精简 npm 发布包**：只保留运行必需文件与用户文档。
+  移除开发资料，避免 npm Code 页混入与使用无关的内容：
+  - `CONTRACT.md`（内部接口契约）
+  - `DATA-SOURCES.md`（数据源调研笔记）
+  - `RELEASING.md`（维护者发版指南）
+  - `scripts/verify-pack.mjs`（仅 CI 使用）
+
+  发布文件数 23 → 19，包体积 149KB → 135KB。
+  这些文件仍保留在 GitHub 仓库中，只是不再打进 npm 包。
+
+### 新增
+
+- `scripts/verify-pack.mjs` 增加反向断言：确认上述开发文档不会被打包，
+  防止后续改动把 `files` 字段又放开。
+
 ## [0.1.1] - 2026-11-07
 
 ### 修复
@@ -92,6 +111,7 @@
 - 204 个测试，含纯函数测试与联网冒烟（网络不可达时自动 skip）
 - GitHub Actions：CI（3 个 Node 版本矩阵 + 打包校验）、Release（版本校验 + npm 发布）
 
-[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/FanXingChunShui/dsh-stock/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.2
 [0.1.1]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.1
 [0.1.0]: https://github.com/FanXingChunShui/dsh-stock/releases/tag/v0.1.0

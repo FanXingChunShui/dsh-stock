@@ -37,6 +37,15 @@ const FORBIDDEN = [
   'tests/',
   '.github/',
   '.git/',
+  // 开发资料不进发布包：用户装插件用不到，只会让 npm 的 Code 页变乱
+  'scripts/',
+];
+
+/** 绝不能出现在包里的具体文件（开发文档）。 */
+const FORBIDDEN_FILES = [
+  'CONTRACT.md',
+  'DATA-SOURCES.md',
+  'RELEASING.md',
 ];
 
 /** 读取 package.json，校验 files 字段与 dsh 入口是否自洽。 */
@@ -127,7 +136,18 @@ function main() {
     }
   }
 
-  // ── 4. 禁止项不能出现 ──
+  // ── 4. 开发文档不能出现 ──
+  console.log('\n开发文档：');
+  for (const file of FORBIDDEN_FILES) {
+    if (packedSet.has(file)) {
+      console.error(`   ❌ 不应打包却出现：${file}`);
+      failed = true;
+    } else {
+      console.log(`   ✓ 已排除 ${file}`);
+    }
+  }
+
+  // ── 5. 禁止项不能出现 ──
   console.log('\n排除项：');
   for (const prefix of FORBIDDEN) {
     const hits = packed.filter((p) => p.startsWith(prefix) || p.includes(`/${prefix}`));
