@@ -589,6 +589,10 @@ window.__ModuleLoader__.load({
       '  --astock-hover:var(--dsh-color-bg-hover,var(--dsw-alias-interactive-bg-hover,rgba(128,128,128,.12)));',
       '  --astock-accent:var(--dsh-color-accent,var(--dsw-alias-state-business-primary,#3f7ff5));',
       '  --astock-danger:var(--dsh-color-danger,var(--dsw-alias-state-error-primary,#d93a2b));',
+      // warn 与 muted 曾经被引用却从未定义，靠各处内联的硬编码兜底，
+      // 导致暗色主题下颜色不跟随、对比度不可控。这里补成正式变量。
+      '  --astock-warn:var(--dsh-color-warning,var(--dsw-alias-state-warning-primary,#b8860b));',
+      '  --astock-muted:var(--dsh-color-text-tertiary,var(--dsw-alias-label-tertiary,rgba(128,128,128,.78)));',
       '  --astock-track:var(--dsh-color-fill-quaternary,var(--dsw-alias-border-l3,rgba(128,128,128,.22)));',
       '  --astock-radius:var(--dsw-radius-md,10px);',
       '  --astock-radius-sm:var(--dsw-radius-sm,6px);',
@@ -884,11 +888,152 @@ window.__ModuleLoader__.load({
       '  border:.5px solid var(--astock-border);border-radius:var(--astock-radius-sm);background:var(--astock-bg-soft)}',
       '.astock-fact-label{font-size:11px;line-height:16px;color:var(--astock-text-3)}',
       '.astock-fact-value{font-size:13px;line-height:19px;font-variant-numeric:tabular-nums;font-weight:600}',
+
+      /* ── 价格与评分区块 ────────────────────────────────────────────
+       * 这几个类是历史遗留：父容器早就定义了样式，子元素却一直没有，
+       * 于是 24px 的大号价格与 13px 的涨跌幅挤在一行且基线不齐。 */
+      '.astock-price-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}',
+      '.astock-score-value{font-size:26px;font-weight:600;line-height:32px;letter-spacing:-.01em;',
+      '  font-variant-numeric:tabular-nums}',
+      '.astock-score-unit{font-size:11px;line-height:16px;color:var(--astock-text-3)}',
+      '.astock-verdict{font-size:11px;line-height:16px;padding:2px 8px;border-radius:999px;',
+      '  border:.5px solid var(--astock-border-strong);color:var(--astock-text-2);white-space:nowrap}',
+
+      /* 涨跌色。此前只有 data-tone 属性、没有对应样式，
+       * 导致量化选股行与列表里的涨跌幅完全不显示颜色。 */
+      '.astock-change{font-style:normal;font-size:12px;font-weight:600;line-height:18px}',
+      '.astock-change[data-tone="up"]{color:var(--astock-up)}',
+      '.astock-change[data-tone="down"]{color:var(--astock-down)}',
+      '.astock-change[data-tone="flat"]{color:var(--astock-flat)}',
+
+      /* ── 量化：子 Tab ───────────────────────────────────────────────
+       * 刻意与主 Tab 用同一套下划线语言（只是字号小一档），
+       * 这样从「个股/板块/列表/量化」切到「回测/扫描/组合」时视觉是连续的。 */
+      '.astock-subtabs{display:flex;align-items:center;gap:2px;',
+      '  border-bottom:.5px solid var(--astock-border)}',
+      '.astock-subtab{appearance:none;font:inherit;font-size:12px;line-height:18px;padding:5px 10px;',
+      '  cursor:pointer;border:0;border-bottom:1.5px solid transparent;background:transparent;',
+      '  color:var(--astock-text-3);white-space:nowrap}',
+      '.astock-subtab:hover{color:var(--astock-text)}',
+      '.astock-subtab[data-active="true"]{color:var(--astock-text);font-weight:600;',
+      '  border-bottom-color:var(--astock-accent)}',
+      '.astock-subtab:focus-visible{outline:2px solid var(--astock-accent);outline-offset:-2px}',
+
+      /* ── 量化：控制栏 ─────────────────────────────────────────────── */
+      '.astock-quant-controls{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;',
+      '  padding:10px 12px;border:.5px solid var(--astock-border);',
+      '  border-radius:var(--astock-radius);background:var(--astock-bg-soft)}',
+      '.astock-quant-field{display:flex;flex-direction:column;gap:3px;min-width:0}',
+      '.astock-quant-field>span{font-size:11px;line-height:15px;color:var(--astock-text-3)}',
+      '.astock-quant-field select{appearance:none;font:inherit;font-size:12px;line-height:18px;',
+      '  padding:4px 26px 4px 9px;cursor:pointer;color:var(--astock-text);',
+      '  border:.5px solid var(--astock-border-strong);border-radius:var(--astock-radius-sm);',
+      '  background-color:var(--astock-bg);background-repeat:no-repeat;background-position:right 8px center;',
+      // ⚠️ data URI 必须写成单行：CSS 数组是用 '\n' join 的，
+      // 一旦把 url(...) 拆成多个数组元素，拼出来的 CSS 会在 url() 内部
+      // 夹一个换行，整条规则连同后面所有规则一起被浏览器丢弃。
+      '  background-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22 viewBox=%220 0 10 6%22%3E%3Cpath d=%22M1 1l4 4 4-4%22 fill=%22none%22 stroke=%22%238b8b8b%22 stroke-width=%221.5%22 stroke-linecap=%22round%22/%3E%3C/svg%3E")}',
+      '.astock-quant-field select:focus-visible{outline:2px solid var(--astock-accent);outline-offset:1px}',
+
+      /* ── 量化：统计卡网格 ───────────────────────────────────────────
+       * auto-fit 让六张卡在宽屏铺满一行、窄屏自动换行，不需要写死断点。 */
+      '.astock-quant-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}',
+      '.astock-quant-stat{display:flex;flex-direction:column;gap:1px;padding:8px 10px;',
+      '  border:.5px solid var(--astock-border);border-radius:var(--astock-radius-sm);',
+      '  background:var(--astock-bg-soft)}',
+      '.astock-quant-stat-label{font-size:11px;line-height:15px;color:var(--astock-text-3)}',
+      '.astock-quant-stat-value{font-size:17px;font-weight:600;line-height:23px;',
+      '  font-variant-numeric:tabular-nums}',
+      '.astock-quant-stat-note{font-size:10.5px;line-height:14px;color:var(--astock-text-3)}',
+      '.astock-quant-stat[data-tone="up"] .astock-quant-stat-value{color:var(--astock-up)}',
+      '.astock-quant-stat[data-tone="down"] .astock-quant-stat-value{color:var(--astock-down)}',
+
+      /* ── 量化：净值曲线 ─────────────────────────────────────────────
+       * height:auto 让 SVG 按 viewBox 等比缩放（720×180），不拉伸失真；
+       * max-height 防止宽屏下曲线高得离谱。 */
+      '.astock-quant-chart{display:flex;flex-direction:column;gap:6px;position:relative}',
+      /* plot 是 svg + hover 气泡的共同定位参照。line-height:0 消除 inline 元素
+       * 底部那条基线空隙，否则气泡的百分比定位会差几个像素。 */
+      '.astock-quant-plot{position:relative;display:block;line-height:0}',
+      '.astock-quant-svg{display:block;width:100%;height:auto;max-height:220px;cursor:crosshair;',
+      '  border:.5px solid var(--astock-border);border-radius:var(--astock-radius-sm);',
+      '  background:var(--astock-bg-soft);touch-action:pan-y}',
+      '.astock-quant-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;',
+      '  font-size:11px;line-height:16px;color:var(--astock-text-3)}',
+      '.astock-quant-legend-item{display:inline-flex;align-items:center;gap:5px}',
+      '.astock-quant-dot{display:inline-block;width:8px;height:8px;border-radius:999px;',
+      '  flex:0 0 auto;background:var(--astock-accent)}',
+      '.astock-quant-dot[data-kind="bench"]{background:var(--astock-muted)}',
+      '.astock-quant-range{margin-left:auto;font-variant-numeric:tabular-nums}',
+
+      /* hover 提示气泡。pointer-events:none 保证它不会挡住鼠标移动，
+       * 否则一出现就触发 mouseleave、气泡开始闪烁。 */
+      '.astock-quant-tip{position:absolute;top:0;z-index:5;pointer-events:none;',
+      '  padding:4px 8px;border:.5px solid var(--astock-border-strong);',
+      '  border-radius:var(--astock-radius-sm);background:var(--astock-bg);',
+      '  font-size:11px;line-height:16px;color:var(--astock-text);white-space:nowrap;',
+      '  box-shadow:0 2px 10px rgba(0,0,0,.14);transform:translate(-50%,0)}',
+      '.astock-quant-tip-row{display:flex;align-items:baseline;gap:6px}',
+      '.astock-quant-tip-row i{font-style:normal;color:var(--astock-text-3)}',
+
+      /* ── 量化：明细表 ─────────────────────────────────────────────── */
+      '.astock-quant-table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:17px;',
+      '  font-variant-numeric:tabular-nums}',
+      '.astock-quant-table th{font-size:11px;line-height:16px;font-weight:500;',
+      '  color:var(--astock-text-3);text-align:right;padding:5px 9px;',
+      '  border-bottom:.5px solid var(--astock-border);white-space:nowrap}',
+      '.astock-quant-table td{padding:5px 9px;text-align:right;',
+      '  border-bottom:.5px solid var(--astock-border);white-space:nowrap}',
+      '.astock-quant-table th:first-child,.astock-quant-table td:first-child{text-align:left}',
+      '.astock-quant-table tbody tr:last-child td{border-bottom:0}',
+      '.astock-quant-table tbody tr:hover{background:var(--astock-hover)}',
+      '.astock-quant-trades summary{cursor:pointer;font-size:11.5px;line-height:17px;',
+      '  color:var(--astock-text-2);padding:2px 0}',
+      '.astock-quant-trades summary:hover{color:var(--astock-text)}',
+      '.astock-quant-trades[open] summary{margin-bottom:6px}',
+
+      /* ── 量化：选股扫描列表 ─────────────────────────────────────────
+       * 网格节奏刻意对齐 .astock-mlist-row，让「量化」与「列表」两个 Tab
+       * 的行手感一致。 */
+      '.astock-quant-scan{display:flex;flex-direction:column;border:.5px solid var(--astock-border);',
+      '  border-radius:var(--astock-radius-sm);overflow:hidden}',
+      '.astock-quant-scan-row{display:grid;grid-template-columns:minmax(0,1.6fr) 96px 76px 32px;',
+      '  align-items:center;gap:8px;padding:7px 11px;cursor:pointer;',
+      '  border-bottom:.5px solid var(--astock-border);background:transparent}',
+      '.astock-quant-scan-row:last-child{border-bottom:0}',
+      '.astock-quant-scan-row:hover{background:var(--astock-hover)}',
+      '.astock-quant-scan-name{display:flex;flex-direction:column;gap:0;min-width:0}',
+      '.astock-quant-scan-name strong{font-size:12.5px;font-weight:600;line-height:18px;',
+      '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.astock-quant-scan-name em{font-style:normal;font-size:10.5px;line-height:15px;',
+      '  color:var(--astock-text-3)}',
+      '.astock-quant-scan-price{display:flex;flex-direction:column;align-items:flex-end;gap:0;',
+      '  font-size:12px;line-height:17px;font-variant-numeric:tabular-nums}',
+      '.astock-quant-scan-score{display:flex;flex-direction:column;align-items:flex-end;gap:0}',
+      '.astock-quant-scan-score b{font-size:14px;line-height:19px;font-variant-numeric:tabular-nums}',
+      '.astock-quant-scan-score em{font-style:normal;font-size:10.5px;line-height:15px;',
+      '  color:var(--astock-text-3)}',
+
+      /* 扫描结果下方的说明：这是「隐式筛选」的告知，需要区别于普通注释。 */
+      '.astock-quant-hint{padding:6px 9px;border-radius:var(--astock-radius-sm);',
+      '  background:var(--astock-bg-soft);border-left:2px solid var(--astock-warn)}',
+      '.astock-quant-warnings{margin:0;padding-left:16px;font-size:11px;line-height:17px;',
+      '  color:var(--astock-text-3)}',
+      '.astock-quant-warnings li{margin:1px 0}',
+
       '@media (max-width:900px){.astock-body{grid-template-columns:minmax(0,1fr)}}',
       '@media (max-width:520px){.astock-root{padding:12px 12px 24px}',
       '  .astock-price-value{font-size:21px;line-height:27px}',
       '  .astock-sector-row,.astock-sector-head{grid-template-columns:minmax(0,1fr) 58px 48px;gap:6px}',
-      '  .astock-sector-row .astock-sector-hide-sm,.astock-sector-head .astock-sector-hide-sm{display:none}}',
+      '  .astock-sector-row .astock-sector-hide-sm,.astock-sector-head .astock-sector-hide-sm{display:none}',
+      /* 窄屏量化：统计卡固定两列（auto-fit 在极窄屏会退化成一列，太高） */
+      '  .astock-quant-stats{grid-template-columns:repeat(2,minmax(0,1fr))}',
+      '  .astock-quant-stat-value{font-size:15px;line-height:21px}',
+      '  .astock-quant-field{flex:1 1 100%}',
+      '  .astock-quant-controls{padding:9px 10px}',
+      /* 交易明细横向滚动，避免把数字压成两行 */
+      '  .astock-quant-table{display:block;overflow-x:auto;white-space:nowrap}',
+      '  .astock-quant-scan-row{grid-template-columns:minmax(0,1fr) 82px 60px 28px;gap:6px}}',
     ].join('\n');
 
     /* ------------------------------------------------------------------ *
@@ -2295,15 +2440,43 @@ window.__ModuleLoader__.load({
      * 全部走 /astock 的 quant/* 端点，与个股、板块、列表共用同一条通道。
      * ════════════════════════════════════════════════════════════════ */
 
-    /** 净值曲线：纯 SVG 折线，不引入任何图表库。 */
+    /**
+     * 净值曲线：纯 SVG 折线，不引入任何图表库。
+     *
+     * 带 hover 十字光标：鼠标移动时显示该日期的策略净值与基准净值。
+     * 回测最有价值的动作是「看某个时点发生了什么」，只有一条线看不出细节，
+     * 所以这里对齐 KLineChart 的交互（那边用 .astock-kline-tip）。
+     */
     function EquityChart(props) {
       var t = props.t;
       var equity = props.equity;
-      var bench = props.benchmark;
-      var height = props.height || 180;
+      var bench = props.benchmark;      var height = props.height || 180;
+
+      // ⚠️ hooks 必须在所有 early return 之前调用。
+      // 若写在后面，空数据分支会少跑一个 hook，React 会抛 hook 数量不一致。
+      var hoverState = React.useState(null);
+      var hover = hoverState[0];
+      var setHover = hoverState[1];
 
       if (!Array.isArray(equity) || equity.length < 2) {
         return h('p', { className: 'astock-card-note' }, t('quantNoEquity'));
+      }
+
+      /* 基准序列的回退。
+       *
+       * 回测结果把「同期买入持有」挂在每个净值点上（equity[i].benchmark），
+       * 并没有顶层 benchmark 字段；而调用方传的是 data.benchmark，永远是
+       * undefined。后果是基准曲线从上线起就没被画出来过——而它恰恰是判断
+       * 「这套规则有没有比躺着不动更好」的唯一依据。
+       *
+       * 这里做兜底：props.benchmark 拿不到时，就从 equity 自身按点取。 */
+      if (!Array.isArray(bench) || bench.length < 2) {
+        var derived = [];
+        for (var d = 0; d < equity.length; d += 1) {
+          var dv = asNumber(equity[d] && equity[d].benchmark);
+          if (dv !== null) derived.push({ date: equity[d].date, equity: dv });
+        }
+        bench = derived.length >= 2 ? derived : null;
       }
 
       var width = 720;
@@ -2378,20 +2551,108 @@ window.__ModuleLoader__.load({
       var first = equity[0].date;
       var last = equity[equity.length - 1].date;
 
+      /* ── 指针换算 ────────────────────────────────────────────────
+       * SVG 是等比缩放的（width:100%;height:auto），所以必须先从像素
+       * 位置反算回 viewBox 坐标，再换算成数据下标，不能直接按像素算。 */
+      function handleMove(ev) {
+        var rect = ev.currentTarget.getBoundingClientRect();
+        if (!rect || !(rect.width > 0)) return;
+        var vx = ((ev.clientX - rect.left) / rect.width) * width;
+        var ratio = (vx - padL) / plotW;
+        if (!(ratio >= 0)) ratio = 0;
+        if (ratio > 1) ratio = 1;
+        var idx = Math.round(ratio * (equity.length - 1));
+        if (idx < 0) idx = 0;
+        if (idx > equity.length - 1) idx = equity.length - 1;
+        setHover(idx);
+      }
+      function handleLeave() {
+        setHover(null);
+      }
+
+      var hoverMarks = null;
+      var tipNode = null;
+      if (hover !== null && hover >= 0 && hover < equity.length) {
+        var point = equity[hover] || {};
+        var hVal = asNumber(point.equity);
+        if (hVal !== null) {
+          var hx = px(hover, equity.length);
+          var hy = py(hVal);
+
+          hoverMarks = [
+            h('line', {
+              key: 'hl', x1: hx, y1: padT, x2: hx, y2: padT + plotH,
+              stroke: 'var(--astock-text-3)', strokeWidth: 1, strokeDasharray: '3 3', opacity: 0.65,
+            }),
+            h('circle', {
+              key: 'hc', cx: hx, cy: hy, r: 3.2,
+              fill: 'var(--astock-accent)', stroke: 'var(--astock-bg)', strokeWidth: 1.5,
+            }),
+          ];
+
+          // 基准在 hover 当日的值：按日期对齐，避免两条序列长度不同时错位
+          var bVal = null;
+          if (Array.isArray(bench)) {
+            for (var k = 0; k < bench.length; k += 1) {
+              if (bench[k] && bench[k].date === point.date) {
+                bVal = asNumber(bench[k].equity);
+                break;
+              }
+            }
+          }
+
+          var leftPct = (hx / width) * 100;
+          var topPct = (hy / height) * 100;
+          // 曲线靠近顶端时把气泡翻到点的下方，否则会被裁掉
+          var flip = topPct < 32;
+
+          tipNode = h('div', {
+            className: 'astock-quant-tip',
+            style: {
+              left: leftPct + '%',
+              top: topPct + '%',
+              transform: flip ? 'translate(-50%, 8px)' : 'translate(-50%, calc(-100% - 8px))',
+            },
+          },
+            h('div', { className: 'astock-quant-tip-row' }, h('i', null, String(point.date || ''))),
+            h('div', { className: 'astock-quant-tip-row' },
+              h('i', null, t('quantLegendEquity')),
+              h('b', null, hVal.toFixed(2))),
+            bVal === null
+              ? null
+              : h('div', { className: 'astock-quant-tip-row' },
+                h('i', null, t('quantLegendBench')),
+                h('b', null, bVal.toFixed(2))));
+        }
+      }
+
       return h('div', { className: 'astock-quant-chart' },
-        h('svg', {
-          viewBox: '0 0 ' + width + ' ' + height,
-          className: 'astock-quant-svg',
-          role: 'img',
-          'aria-label': t('quantEquityTitle'),
-          preserveAspectRatio: 'none',
-        },
-          grid,
-          benchPath
-            ? h('path', { d: benchPath, fill: 'none', stroke: 'var(--astock-muted)', strokeWidth: 1.4, strokeDasharray: '4 3', opacity: 0.8 })
-            : null,
-          h('path', { d: mainPath, fill: 'none', stroke: 'var(--astock-accent)', strokeWidth: 1.8 }),
-        ),
+        h('div', { className: 'astock-quant-plot' },
+          h('svg', {
+            viewBox: '0 0 ' + width + ' ' + height,
+            className: 'astock-quant-svg',
+            role: 'img',
+            'aria-label': t('quantEquityTitle'),
+            // 等比缩放（meet）：曲线会随容器宽度整体缩放，不会横向拉伸变形。
+            // 线宽用 non-scaling-stroke 固定住，否则放大后描边会跟着变粗。
+            preserveAspectRatio: 'xMidYMid meet',
+            onMouseMove: handleMove,
+            onMouseLeave: handleLeave,
+          },
+            grid,
+            benchPath
+              ? h('path', {
+                d: benchPath, fill: 'none', stroke: 'var(--astock-muted)', strokeWidth: 1.4,
+                strokeDasharray: '4 3', opacity: 0.8, vectorEffect: 'non-scaling-stroke',
+              })
+              : null,
+            h('path', {
+              d: mainPath, fill: 'none', stroke: 'var(--astock-accent)', strokeWidth: 1.8,
+              vectorEffect: 'non-scaling-stroke',
+            }),
+            hoverMarks,
+          ),
+          tipNode),
         h('div', { className: 'astock-quant-legend' },
           h('span', { className: 'astock-quant-legend-item' },
             h('i', { className: 'astock-quant-dot', 'data-kind': 'main' }),
